@@ -1,8 +1,12 @@
 package de.tiramon.du.map;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +54,14 @@ public class DuMapDialog extends Application {
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
-		primaryStage.setTitle("DuMap Companion");
+		Manifest manifest = getManifest(this.getClass());
+		String version;
+		if (manifest != null) {
+			version = getVersion(manifest);
+		} else {
+			version = "?.?.?";
+		}
+		primaryStage.setTitle("DuMap Companion - v" + version);
 		InputStream in = getClass().getClassLoader().getResourceAsStream("favicon.png");
 		primaryStage.getIcons().add(new Image(in));
 
@@ -69,7 +80,7 @@ public class DuMapDialog extends Application {
 					Response response = builder.exchange(code);
 					bell.oauth.discord.domain.User user = builder.getUser();
 					log.info("Authenticated as {}#{}", user.getUsername(), user.getDiscriminator());
-					primaryStage.setTitle("DualUniverse Companion - " + user.getUsername() + "#" + user.getDiscriminator());
+					primaryStage.setTitle("DualUniverse Companion - v" + version + " - " + user.getUsername() + "#" + user.getDiscriminator());
 					primaryStage.setScene(null);
 					loginDone(primaryStage);
 				}
@@ -82,6 +93,7 @@ public class DuMapDialog extends Application {
 		} else {
 			bell.oauth.discord.domain.User user = builder.getUser();
 			log.info("Authenticated as {}#{}", user.getUsername(), user.getDiscriminator());
+			primaryStage.setTitle("DualUniverse Companion - v" + version + " - " + user.getUsername() + "#" + user.getDiscriminator());
 			primaryStage.setScene(null);
 			loginDone(primaryStage);
 		}
@@ -183,20 +195,63 @@ public class DuMapDialog extends Application {
 		lastStateChangeColumn.setPrefWidth(140);
 
 		TableView<Scanner> scannerList = new TableView<>();
+
 		scannerList.getColumns().add(idColumn);
 		scannerList.getColumns().add(posColumn);
 		scannerList.getColumns().add(stateColumn);
 		scannerList.getColumns().add(timeLeftColumn);
 		scannerList.getColumns().add(lastStateChangeColumn);
+		// scannerList.getColumns().add(submitedColumn);
 
 		scannerList.setItems(service.getScannerList());
 
+		scannerList.setOnMouseClicked(event -> {
+			Scanner entry = scannerList.getSelectionModel().getSelectedItem();
+			if (entry == null) {
+				return;
+			}
+			final Clipboard clipboard = Clipboard.getSystemClipboard();
+			final ClipboardContent content = new ClipboardContent();
+			content.putString(entry.positionProperty().get());
+			clipboard.setContent(content);
+		});
+
 		pane.getChildren().add(logfileLabel);
 		pane.getChildren().add(hbox);
+		VBox.setVgrow(scannerList, Priority.ALWAYS);
 		pane.getChildren().add(scannerList);
 
 		Scene scene = new Scene(pane);
 		primaryStage.setScene(scene);
 		primaryStage.show();
 	}
+
+	public static Manifest getManifest(Class<?> theClass) throws IOException {
+
+		// Find the path of the compiled class
+		String classPath = theClass.getResource(theClass.getSimpleName() + ".class").toString();
+
+		// Find the path of the lib which includes the class
+		if (classPath.lastIndexOf('!') == -1) {
+			return null;
+		}
+		String libPath = classPath.substring(0, classPath.lastIndexOf('!'));
+		if (libPath.endsWith("/BOOT-INF/classes")) {
+			libPath = libPath.substring(0, libPath.lastIndexOf('!'));
+		}
+		// Find the path of the file inside the lib jar
+		String filePath = libPath + "!/META-INF/MANIFEST.MF";
+
+		// We look at the manifest file, getting three attributes out of it
+		return new Manifest(new URL(filePath).openStream());
+	}
+
+	public static String getVersion(Manifest manifest) {
+		if (manifest == null) {
+			return "?.?.?";
+		}
+		Attributes attr = manifest.getMainAttributes();
+		return attr.getValue("Implementation-Version");
+	}
+
 }

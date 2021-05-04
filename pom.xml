@@ -89,6 +89,7 @@
 				<configuration>
 					<archive>
 						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 							<addClasspath>true</addClasspath>
 
 							<mainClass>${start-class}</mainClass>
@@ -110,6 +111,7 @@
 				<configuration>
 					<archive>
 						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 							<mainClass>${start-class}</mainClass>
 						</manifest>
 					</archive>
