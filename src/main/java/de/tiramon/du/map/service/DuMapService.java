@@ -29,6 +29,7 @@ import de.tiramon.du.map.model.AssetInformation;
 import de.tiramon.du.map.model.Ore;
 
 public class DuMapService {
+	private String baseUrl = "https://api.dumap.de";
 
 	protected Logger log = LoggerFactory.getLogger(getClass());
 	private List<AssetInformation> queue = new CopyOnWriteArrayList<>();
@@ -68,7 +69,7 @@ public class DuMapService {
 	}
 
 	private HttpPost createPost(long celestialId, double lat, double lon, long time, Map<Ore, Long> ores) {
-		HttpPost post = new HttpPost("http://www.dumap.de:8151/scan/automatic");
+		HttpPost post = new HttpPost(baseUrl + "/scan/automatic");
 		post.setHeader("Authorization", "Bearer " + builder.getAccess_token());
 		Map<String, Object> request = new HashMap<>();
 		request.put("celestialId", celestialId);
@@ -83,7 +84,7 @@ public class DuMapService {
 	}
 
 	private HttpPost createPost(long celestialId, long tileId, long time) {
-		HttpPost post = new HttpPost("http://www.dumap.de:8151/asset");
+		HttpPost post = new HttpPost(baseUrl + "/asset");
 		post.setHeader("Authorization", "Bearer " + builder.getAccess_token());
 		Map<String, Long> request = new HashMap<>();
 		request.put("planetId", celestialId);

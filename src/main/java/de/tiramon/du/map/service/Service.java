@@ -118,9 +118,9 @@ public class Service {
 				if (scannerMap.putIfAbsent(scannerid, scanner) == null) {
 					log.info("new scanner {}", scannerid);
 					list.add(scanner);
-					// applicationEventPublisher.publishEvent(new NewScannerEvent(scannerMap.get(scannerid)));
 				}
 				scannerMap.get(scannerid).setState(ScannerState.STARTED, record.millis);
+				scannerMap.get(scannerid).setSubmited(false);
 				log.info("Scanner " + scannerid + " started");
 				return;
 			}
@@ -129,10 +129,9 @@ public class Service {
 			Matcher matcher = scanner_stop.matcher(record.message);
 			if (matcher.matches()) {
 				long scannerid = Long.valueOf(matcher.group("scannerid"));
-				// if (scannerMap.putIfAbsent(scannerid, new Scanner(scannerid)) == null)
-				// applicationEventPublisher.publishEvent(new NewScannerEvent(scannerMap.get(scannerid)));
 				scannerMap.get(scannerid).setState(ScannerState.FINISHED, record.millis);
 				log.info("Scanner " + scannerid + " finished");
+				scannerMap.get(scannerid).setSubmited(false);
 				playSound();
 				return;
 			}
@@ -144,8 +143,6 @@ public class Service {
 		if (matcher.matches()) {
 			long scannerid = Long.valueOf(matcher.group("scannerid"));
 			String position = matcher.group("position").replace("-0.0000", "0.0000");
-			// if (scannerMap.putIfAbsent(scannerid, new Scanner(scannerid)) == null)
-			// applicationEventPublisher.publishEvent(new NewScannerEvent(scannerMap.get(scannerid)));
 			Scanner scanner = scannerMap.get(scannerid);
 			scanner.setPosition(position);
 			Scan scan = new Scan(position, record.millis);
@@ -162,14 +159,13 @@ public class Service {
 
 			Ore ore = Ore.byName(matcher.group("oreName"));
 			long oreAmount = Double.valueOf(matcher.group("oreAmount")).longValue();
-			Scanner scanner = scannerMap.get(scannerId);
 			Scan scan = currentScans.get(scannerId);
 			if (scan != null) {
 				if (scan.getOres().containsKey(ore)) {
 					log.info("received redundant ore scan result, so scan is done");
 					currentScans.remove(scannerId);
 					dumapService.sendScan(scan.getPlanet(), scan.getLat(), scan.getLon(), scan.getTimestamp(), scan.getOres());
-					// Platform.runLater(() -> scanner.scans.add(scan));
+					scannerMap.get(scannerId).setSubmited(true);
 				} else {
 					scan.add(ore, oreAmount);
 					log.info("Scanner {} found {} {}", scannerId, oreAmount, ore.getName());
