@@ -154,7 +154,30 @@ public class DuMapDialog extends Application {
 
 		TableColumn<Scanner, ScannerState> stateColumn = new TableColumn<>("State");
 		stateColumn.setCellValueFactory(param -> param.getValue().stateProperty());
-		stateColumn.setPrefWidth(60);
+		stateColumn.setStyle("-fx-alignment: CENTER;");
+		stateColumn.setCellFactory(e -> new TableCell<Scanner, ScannerState>() {
+			@Override
+			protected void updateItem(ScannerState item, boolean empty) {
+				super.updateItem(item, empty);
+
+				if (item == null || empty) {
+					setText(null);
+				} else {
+					setText(item.toString());
+
+					if (item == ScannerState.SUBMITED) {
+						this.setStyle("-fx-alignment: CENTER;-fx-background-color: lightgreen;");
+					} else if (item == ScannerState.RESETED) {
+						this.setStyle("-fx-alignment: CENTER;-fx-background-color: #ffcccb;");
+					} else if (item == ScannerState.STARTED) {
+						this.setStyle("-fx-alignment: CENTER;-fx-background-color: yellow;");
+					} else {
+						this.setStyle("-fx-alignment: CENTER;");
+					}
+				}
+			}
+		});
+		stateColumn.setPrefWidth(65);
 
 		TableColumn<Scanner, String> posColumn = new TableColumn<>("pos Link");
 		posColumn.setCellValueFactory(param -> param.getValue().positionProperty());
@@ -162,6 +185,7 @@ public class DuMapDialog extends Application {
 
 		TableColumn<Scanner, Number> timeLeftColumn = new TableColumn<>("time left");
 		timeLeftColumn.setCellValueFactory(param -> param.getValue().timeLeftProperty());
+		timeLeftColumn.setStyle("-fx-alignment: CENTER;");
 		timeLeftColumn.setCellFactory(e -> new TableCell<Scanner, Number>() {
 			@Override
 			protected void updateItem(Number item, boolean empty) {
@@ -203,7 +227,6 @@ public class DuMapDialog extends Application {
 		scannerList.getColumns().add(stateColumn);
 		scannerList.getColumns().add(timeLeftColumn);
 		scannerList.getColumns().add(lastStateChangeColumn);
-		// scannerList.getColumns().add(submitedColumn);
 
 		scannerList.setItems(service.getScannerList());
 
