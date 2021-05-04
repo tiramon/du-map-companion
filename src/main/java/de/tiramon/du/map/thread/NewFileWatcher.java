@@ -10,12 +10,15 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.FileTime;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 
 public class NewFileWatcher implements Runnable {
 	protected Logger log = LoggerFactory.getLogger(getClass());
@@ -25,6 +28,22 @@ public class NewFileWatcher implements Runnable {
 	boolean restartLogFile = false;
 
 	private WatchKey folderKey;
+
+	private List<Path> queue;
+
+	public NewFileWatcher(List<Path> queue) {
+		this.queue = queue;
+		currentLogFile.addListener(new ChangeListener<Path>() {
+
+			@Override
+			public void changed(ObservableValue<? extends Path> observable, Path oldValue, Path newValue) {
+				synchronized (queue) {
+					queue.add(newValue);
+				}
+
+			}
+		});
+	}
 
 	@Override
 	public void run() {
@@ -42,8 +61,7 @@ public class NewFileWatcher implements Runnable {
 
 			if (logFile != null) {
 				log.info("Setting newest log file as current log file: {}", logFile);
-				this.currentLogFile.set(logFile);
-
+				currentLogFile.set(logFile);
 			}
 
 			WatchKey key = null;
@@ -56,11 +74,12 @@ public class NewFileWatcher implements Runnable {
 
 					Path newLogFile = Paths.get(logFolder.toString(), affectedFile.toString());
 					log.info("new file {}", newLogFile);
-					this.currentLogFile.set(newLogFile);
+					currentLogFile.set(newLogFile);
 					restartLogFile = true;
 				}
+				key.reset();
 			}
-			key.reset();
+
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		} catch (InterruptedException e) {

@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -24,7 +25,6 @@ import de.tiramon.du.map.InstanceProvider;
 import de.tiramon.du.map.model.DuLogRecord;
 import de.tiramon.du.map.service.Service;
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.value.ObservableValue;
 
 public class FileReader implements Runnable {
 	protected Logger log = LoggerFactory.getLogger(getClass());
@@ -37,20 +37,32 @@ public class FileReader implements Runnable {
 	// exception is thrown
 	private boolean shutdown = false;
 
-	public FileReader(ReadOnlyObjectProperty<Path> currentLogfileProperty) {
-		this.currentLogFileProperty = currentLogfileProperty;
+	private Object object;
+
+	private List<Path> list;
+
+	Path currentPath = null;
+	List<Path> pathQueue = new CopyOnWriteArrayList<>();
+
+	public FileReader() {
 	}
 
 	@Override
 	public void run() {
 		log.info("FileReader started");
 		setupXStream();
-		currentLogFileProperty.addListener((ObservableValue<? extends Path> observable, Path oldValue, Path newValue) -> {
-			log.info("new log file {}", newValue);
-			readFile(currentLogFileProperty.get());
-		});
-		log.info("listener added");
-
+		while (true) {
+			while (pathQueue.isEmpty()) {
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			Path path = pathQueue.remove(0);
+			log.info("new log file {}", path);
+			readFile(path);
+		}
 	}
 
 	private void setupXStream() {
@@ -89,18 +101,31 @@ public class FileReader implements Runnable {
 		long start = System.currentTimeMillis();
 		try (BufferedReader br = Files.newBufferedReader(path)) {
 			while (true) {
+				long lastModified = path.toFile().lastModified();
+				// if (lastModified < System.currentTimeMillis() - 30 * 1000) {
+				// log.info("stop reading file, because it wasn't changed for 30s");
+				// return;
+				// }
+
 				if (shutdown) {
+					log.info("shutdown");
 					return;
 				}
 
-				if (!currentLogFileProperty.get().equals(path)) {
-					log.info("stoping reading old logfile");
-					return;
-				}
+				// if (!currentLogFileProperty.get().equals(path)) {
+				// log.info("stoping reading old logfile");
+				// return;
+				// }
 				line = br.readLine();
 
 				if (line == null) {
 					DuMapDialog.init = true;
+					synchronized (pathQueue) {
+						if (!pathQueue.isEmpty()) {
+							log.info("current file done and new present");
+							return;
+						}
+					}
 					Thread.sleep(1000);
 				} else {
 					line = line.trim();
@@ -157,5 +182,9 @@ public class FileReader implements Runnable {
 
 	public void stop() {
 		shutdown = true;
+	}
+
+	public List<Path> getQueue() {
+		return pathQueue;
 	}
 }

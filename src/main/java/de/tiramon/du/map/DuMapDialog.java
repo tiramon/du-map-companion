@@ -118,13 +118,15 @@ public class DuMapDialog extends Application {
 		Label logfileLabel = new Label();
 		logfileLabel.setPrefWidth(600);
 
-		newFileWatcher = new NewFileWatcher();
+		fileReader = new FileReader();
+
+		newFileWatcher = new NewFileWatcher(fileReader.getQueue());
 		ReadOnlyObjectProperty<Path> currentLogfileProperty = newFileWatcher.getCurrentLogFileProperty();
 		currentLogfileProperty.addListener((ObservableValue<? extends Path> observable, Path oldValue, Path newValue) -> {
 			// TODO Auto-generated method stub
 			Platform.runLater(() -> logfileLabel.setText(newValue.toString()));
 		});
-		fileReader = new FileReader(currentLogfileProperty);
+
 		fileReaderThread = new Thread(fileReader, "FileReader");
 		fileReaderThread.start();
 		try {
