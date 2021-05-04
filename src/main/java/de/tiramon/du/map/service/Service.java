@@ -1,7 +1,5 @@
 package de.tiramon.du.map.service;
 
-import java.io.InputStream;
-import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,21 +14,17 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.sun.javafx.collections.ObservableListWrapper;
 
 import de.tiramon.du.map.DuMapDialog;
 import de.tiramon.du.map.InstanceProvider;
 import de.tiramon.du.map.model.DuLogRecord;
 import de.tiramon.du.map.model.Ore;
-import de.tiramon.du.map.model.Planet;
 import de.tiramon.du.map.model.Scan;
 import de.tiramon.du.map.model.Scanner;
 import de.tiramon.du.map.model.Scanner.ScannerState;
 import de.tiramon.du.map.model.Sound;
 import de.tiramon.du.map.model.User;
-import javafx.application.Platform;
 import javafx.beans.Observable;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -44,13 +38,10 @@ public class Service {
 
 	private String soundSetting = InstanceProvider.getProperties().getProperty("territoryscan.sound");
 
-	private List<Planet> planets;
-	private Gson gson = InstanceProvider.getGson();
 	private DuMapService dumapService = new DuMapService();
 
 	private Pattern asset = Pattern.compile("\\d+\\|\"AssetId:\\[type = Territory, construct = ConstructId:\\[constructId = 0\\], element = ElementId:\\[elementId = 0], territory = TerritoryTileIndex:\\[planetId = (?<planetId>\\d+), tileIndex = (?<tileId>\\d+)\\], item = ItemId:\\[typeId = 0, instanceId = 0, ownerId = EntityId:\\[playerId = 0, organizationId = 0\\]\\](?:, organization = OrganizationId:\\[organizationId = 0\\])?\\]\"\\|");
 	private Pattern userPattern = Pattern.compile("LoginResponse:\\[playerId = (?<playerId>\\d+), username = (?<playerName>.+?), communityId = (?<communityId>\\d+), ip = [\\d+\\.\\|]+, timeSeconds = @\\((?<loginTimestamp>\\d+)\\) \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]");
-	private Pattern planetPattern = Pattern.compile("(?<planetId>\\d+)\\(planet\\)");
 
 	private Pattern scanner_start = Pattern.compile("\\d+\\|\"Construct_Element_TerritoryScanner_Start\"\\|\\|\"(?<scannerid>\\d+)\"\\|");
 	private Pattern scanner_stop = Pattern.compile("\\d+\\|\"Construct_Element_TerritoryScanner_Stop\"\\|\\|\"(?<scannerid>\\d+)\"\\|");
@@ -58,7 +49,6 @@ public class Service {
 	private Pattern scanOrePattern = Pattern.compile("\"(?<scannerid>\\d+)\"\\|\\|\"(?<oreName>[A-Za-z ]+)\"\\|\\|\"(?<oreAmount>[\\de+\\.]+)\"");
 
 	private User user;
-	private ObjectProperty<Planet> currentPlanetProperty = new SimpleObjectProperty<>();
 	private Set<Long> knownAssets = ConcurrentHashMap.newKeySet();
 
 	private ObjectProperty<Sound> currentSoundProperty = new SimpleObjectProperty<>();
@@ -69,7 +59,6 @@ public class Service {
 	private ObservableList<Scanner> list = FXCollections.observableList(new CopyOnWriteArrayList<>(), item -> new Observable[] { item.timeLeftProperty(), item.positionProperty(), item.stateProperty() });
 
 	public Service() {
-		initPlanets();
 		initSound();
 	}
 
@@ -85,15 +74,6 @@ public class Service {
 			if (sound != null) {
 				currentSoundProperty.set(sound);
 			}
-		}
-	}
-
-	private void initPlanets() {
-		Type typeOfHashMap = new TypeToken<List<Planet>>() {
-		}.getType();
-		InputStream in = getClass().getClassLoader().getResourceAsStream("planet.json");
-		if (in != null) {
-			planets = gson.fromJson(new java.io.InputStreamReader(in), typeOfHashMap);
 		}
 	}
 
@@ -173,23 +153,6 @@ public class Service {
 			} else {
 				log.trace("received redundant ore scan result");
 			}
-		}
-	}
-
-	public void handlePlanet(DuLogRecord record) {
-		Matcher matcher = planetPattern.matcher(record.message);
-		if (matcher.find()) {
-			Long planetId = Long.parseLong(matcher.group("planetId"));
-			Planet planet = planets.stream().filter(p -> p.getBodyId() == planetId).findFirst().orElse(null);
-			if (planet == null) {
-				throw new RuntimeException("Unkown Planet -> " + planetId);
-			}
-			Platform.runLater(() -> {
-				this.currentPlanetProperty.set(planet);
-				log.info("current planet changed to {} {}", planetId, currentPlanetProperty.get().getName());
-			});
-		} else {
-			throw new RuntimeException("InvalidPattern");
 		}
 	}
 

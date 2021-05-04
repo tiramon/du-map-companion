@@ -142,8 +142,6 @@ public class FileReader implements Runnable {
 							this.handleService.handleScanOre(record);
 						} else if (record.id == 411172400L) {
 							this.handleService.handleScanPosition(record);
-						} else if (record.id == 2339009767L) {
-							this.handleService.handlePlanet(record);
 						} else if (record.id == 1400672326L) {
 							this.handleService.handleUser(record);
 						}
