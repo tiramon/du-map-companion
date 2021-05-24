@@ -1,7 +1,6 @@
 package de.tiramon.du.map.model;
 
 public class User {
-
 	private Long playerId;
 	private Long communityId;
 	private String playerName;

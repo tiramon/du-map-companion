@@ -51,7 +51,7 @@ public class DuMapService {
 		} else {
 			while (!queue.isEmpty()) {
 				AssetInformation a = queue.remove(0);
-				HttpPost post = createPost(a.planetId, a.tileId, a.time);
+				HttpPost post = createPost(a.getPlanetId(), a.getTileId(), a.getTime());
 				sendPost(post);
 			}
 			HttpPost post = createPost(celestialId, tileId, time);

@@ -46,8 +46,8 @@ public class DuMapDialog extends Application {
 	private OAuthBuilder builder = InstanceProvider.getOAuthBuilder();
 	private Service service = InstanceProvider.getService();
 
-	Thread fileReaderThread;
-	Thread fileWatcherThread;
+	private Thread fileReaderThread;
+	private Thread fileWatcherThread;
 
 	private NewFileWatcher newFileWatcher;
 	private FileReader fileReader;
