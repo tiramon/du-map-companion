@@ -1,8 +1,8 @@
 package de.tiramon.du.map.model;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+/**
+ * Model for the xml structure used by NQ in the DualUniverse log files
+ */
 public class DuLogRecord {
 	public String date;
 	public long millis;
@@ -10,20 +10,12 @@ public class DuLogRecord {
 	public String level;
 	public String clazz;
 	public String sequence;
-	public String method;
+	public DUMethod method;
 	public String thread;
 	public String message;
 
-	public long id;
-	static Pattern idPattern = Pattern.compile("(?<uniqueId>\\d+)\\D?");
-
-	public void initId() {
-		Matcher matcher = idPattern.matcher(message);
-		if (matcher.find()) {
-			id = Long.valueOf(matcher.group("uniqueId"));
-		} else {
-			id = -1;
-			// System.out.println(message);
-		}
+	@Override
+	public String toString() {
+		return this.clazz + " " + this.method + " " + this.millis + " " + this.message;
 	}
 }

@@ -11,10 +11,12 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.FileTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.tiramon.du.map.InstanceProvider;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
@@ -25,7 +27,6 @@ public class NewFileWatcher implements Runnable {
 
 	private SimpleObjectProperty<Path> currentLogFile = new SimpleObjectProperty<>(null);
 	private Path logFolder;
-	boolean restartLogFile = false;
 
 	private WatchKey folderKey;
 
@@ -33,8 +34,23 @@ public class NewFileWatcher implements Runnable {
 
 	public NewFileWatcher(List<Path> queue) {
 		this.queue = queue;
-		currentLogFile.addListener(new ChangeListener<Path>() {
 
+		Path homepath = Paths.get(System.getProperty("user.home"));
+		logFolder = Paths.get(homepath.toString(), "\\AppData\\Local\\NQ\\DualUniverse\\log");
+
+		boolean readAll = Boolean.parseBoolean((String) InstanceProvider.getProperties().getOrDefault("readAll", "false"));
+		if (readAll) {
+			try {
+				List<Path> list = Files.list(logFolder).sorted((a, b) -> Long.compare(a.toFile().lastModified(), b.toFile().lastModified())).collect(Collectors.toList());
+				list.remove(list.size() - 1);
+				list.forEach(p -> this.queue.add(p));
+				log.info("added {} to backlog", list.size());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		currentLogFile.addListener(new ChangeListener<Path>() {
 			@Override
 			public void changed(ObservableValue<? extends Path> observable, Path oldValue, Path newValue) {
 				synchronized (queue) {
@@ -49,8 +65,6 @@ public class NewFileWatcher implements Runnable {
 	public void run() {
 		log.info("LogFileWatcher started");
 
-		Path homepath = Paths.get(System.getProperty("user.home"));
-		logFolder = Paths.get(homepath.toString(), "\\AppData\\Local\\NQ\\DualUniverse\\log");
 		try {
 			Thread.sleep(500);
 
@@ -75,7 +89,6 @@ public class NewFileWatcher implements Runnable {
 					Path newLogFile = Paths.get(logFolder.toString(), affectedFile.toString());
 					log.info("new file {}", newLogFile);
 					currentLogFile.set(newLogFile);
-					restartLogFile = true;
 				}
 				key.reset();
 			}

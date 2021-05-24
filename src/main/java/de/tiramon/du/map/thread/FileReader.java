@@ -22,8 +22,10 @@ import com.thoughtworks.xstream.security.PrimitiveTypePermission;
 
 import de.tiramon.du.map.DuMapDialog;
 import de.tiramon.du.map.InstanceProvider;
+import de.tiramon.du.map.model.DUMethod;
 import de.tiramon.du.map.model.DuLogRecord;
 import de.tiramon.du.map.service.Service;
+import de.tiramon.du.map.utils.MethodEnumConverter;
 import javafx.beans.property.ReadOnlyObjectProperty;
 
 public class FileReader implements Runnable {
@@ -82,6 +84,7 @@ public class FileReader implements Runnable {
 		// class is a reserved word in java so we need to map it to something that is
 		// not reserved
 		xstream.aliasAttribute(DuLogRecord.class, "clazz", "class");
+		xstream.registerConverter(MethodEnumConverter.getInstance());
 	}
 
 	public void onShutdown() {
@@ -126,24 +129,37 @@ public class FileReader implements Runnable {
 							return;
 						}
 					}
+
 					Thread.sleep(1000);
 				} else {
 					line = line.trim();
 					// if end of record entry is reached, parse and process
 					if (line.equals("</record>")) {
 						lineBuffer.add(line);
-						DuLogRecord record = mapToRecord(lineBuffer);
-						record.initId();
-						if (record.id == 2772531619L) {
-							this.handleService.handleAsset(record);
-						} else if (record.id == 384688231L) {
-							this.handleService.handleScanStatusChange(record);
-						} else if (record.id == 848570271L) {
-							this.handleService.handleScanOre(record);
-						} else if (record.id == 411172400L) {
-							this.handleService.handleScanPosition(record);
-						} else if (record.id == 1400672326L) {
-							this.handleService.handleUser(record);
+						DuLogRecord record = null;
+
+						try {
+							record = mapToRecord(lineBuffer);
+
+						} catch (com.thoughtworks.xstream.converters.ConversionException e) {
+							// System.out.println(convert(lineBuffer));
+						}
+						int bp = 0;
+						if (record != null && record.method != null) {
+							/*
+							 * record.initId(); if (record.id == 2772531619L) { this.handleService.handleAsset(record); } else if (record.id == 384688231L) { this.handleService.handleScanStatusChange(record); } else if (record.id == 848570271L) { this.handleService.handleScanOre(record); } else if (record.id == 411172400L) { this.handleService.handleScanPosition(record); } else if (record.id == 1400672326L) { this.handleService.handleUser(record); }
+							 */
+							if (record.method == DUMethod.ASSET_CLAIM) {
+								this.handleService.handleAsset(record);
+							} else if (record.method == DUMethod.TERRITORYSCANNER_STATUSCHANGE) {
+								this.handleService.handleScanStatusChange(record);
+							} else if (record.method == DUMethod.TERRITORYSCANNER_RESULT) {
+								this.handleService.handleScanOre(record);
+							} else if (record.method == DUMethod.TERRITORYSCANNER_POSITION) {
+								this.handleService.handleScanPosition(record);
+							} else if (record.method == DUMethod.ASSET_RIGHTS) {
+								this.handleService.handleAssetRights(record);
+							}
 						}
 						// addAvgReadPerRecord(System.currentTimeMillis() - start);
 						// publish record for further processing
@@ -164,18 +180,37 @@ public class FileReader implements Runnable {
 				}
 			}
 		} catch (Exception e) {
+			System.err.println(convert(lineBuffer));
 			throw new RuntimeException(e);
 		}
 	}
 
 	private DuLogRecord mapToRecord(List<String> lineBuffer) throws IOException, ClassNotFoundException {
-		// need to add a wrapper to be able to parse the element correctly
-		lineBuffer.add(0, "<wrapper>");
-		lineBuffer.add("</wrapper>");
-		String str = lineBuffer.stream().collect(Collectors.joining());
+
+		String str = convert(lineBuffer);
+		// System.out.println(str);
 		ObjectInputStream in = xstream.createObjectInputStream(new ByteArrayInputStream(str.getBytes()));
 		DuLogRecord record = (DuLogRecord) in.readObject();
 		return record;
+	}
+
+	private String convert(List<String> lineBuffer) {
+		lineBuffer.add(0, "<wrapper>");
+		lineBuffer.add("</wrapper>");
+		String str = lineBuffer.stream().collect(Collectors.joining());
+		str = replaceString(str);
+		return str;
+	}
+
+	private String replaceString(String s) {
+		//@formatter:off
+		return s.replaceAll("&", "&amp;")
+				.replaceAll("<>", "&lt;&gt;")
+				.replaceAll("<lambda_[a-z0-9]+>", "&lt;lambda&gt;")
+				.replaceAll("<((?:(?!wrapper|record|date|millis|sequence|logger|level|class|method|thread|message).)+?)>","&lt;$1&gt;")
+				.replaceAll("<((?:(?!wrapper|record|date|millis|sequence|logger|level|class|method|thread|message).)+?)>","&lt;$1&gt;")
+				.replaceAll("<class ","&lt;class ");
+		//@formatter:on
 	}
 
 	public void stop() {

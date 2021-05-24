@@ -40,14 +40,15 @@ public class Service {
 
 	private DuMapService dumapService = new DuMapService();
 
-	private Pattern asset = Pattern.compile("\\d+\\|\"AssetId:\\[type = Territory, construct = ConstructId:\\[constructId = 0\\], element = ElementId:\\[elementId = 0], territory = TerritoryTileIndex:\\[planetId = (?<planetId>\\d+), tileIndex = (?<tileId>\\d+)\\], item = ItemId:\\[typeId = 0, instanceId = 0, ownerId = EntityId:\\[playerId = 0, organizationId = 0\\]\\](?:, organization = OrganizationId:\\[organizationId = 0\\])?\\]\"\\|");
+	private Pattern asset = Pattern.compile("onTerritoryClaimed\\(planet=(?<planetId>\\d+), tile=(?<tileId>\\d+)\\)");
+	private Pattern asset2 = Pattern.compile("Received rights for asset AssetId:\\[type = Territory, construct = ConstructId:\\[constructId = 0\\], element = ElementId:\\[elementId = 0\\], territory = TerritoryTileIndex:\\[planetId = (?<planetId>\\d+), tileIndex = (?<tileId>\\d+)\\], item = ItemId:\\[typeId = 0, instanceId = 0, ownerId = EntityId:\\[playerId = 0, organizationId = 0\\]\\], organization = OrganizationId:\\[organizationId = 0\\]\\]");
 	private Pattern userPattern = Pattern.compile("LoginResponse:\\[playerId = (?<playerId>\\d+), username = (?<playerName>.+?), communityId = (?<communityId>\\d+), ip = [\\d+\\.\\|]+, timeSeconds = @\\((?<loginTimestamp>\\d+)\\) \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]");
 
-	private Pattern scanner_start = Pattern.compile("\\d+\\|\"Construct_Element_TerritoryScanner_Start\"\\|\\|\"(?<scannerid>\\d+)\"\\|");
-	private Pattern scanner_stop = Pattern.compile("\\d+\\|\"Construct_Element_TerritoryScanner_Stop\"\\|\\|\"(?<scannerid>\\d+)\"\\|");
-	private Pattern scanner_result_position = Pattern.compile("\\d+\\|\"\\d+#(?<scannerid>\\d+)\"\\|\\|\"(\\d+\\.\\d+)\"\\|\\|\"(?<position>::pos\\{\\d+,\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+})\"\\|");
-	private Pattern scanOrePattern = Pattern.compile("\"(?<scannerid>\\d+)\"\\|\\|\"(?<oreName>[A-Za-z ]+)\"\\|\\|\"(?<oreAmount>[\\de+\\.]+)\"");
+	private Pattern scanner_start = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Start -- id (?<scannerid>\\d+)");
+	private Pattern scanner_stop = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Stop -- id (?<scannerid>\\d+)");
+	private Pattern scanner_result_position = Pattern.compile("TerritoryScan\\[\\d+#(?<scannerid>\\d+)\\] end: lasted (\\d+\\.\\d+) seconds coordinates: (?<position>::pos\\{\\d+,\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+})");
 
+	private Pattern scanOrePattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: material: (?<oreName>[A-Za-z ]+) : (?<oreAmount>[\\de+\\.]+) \\* \\d+");
 	private User user;
 	private Set<Long> knownAssets = ConcurrentHashMap.newKeySet();
 
@@ -86,6 +87,8 @@ public class Service {
 			if (knownAssets.add(planetId * 1000000 + tileId)) {
 				dumapService.sendClaimedTile(planetId, tileId, record.millis);
 			}
+		} else {
+			int bp = 0;
 		}
 	}
 
@@ -103,6 +106,8 @@ public class Service {
 				scannerMap.get(scannerid).setSubmited(false);
 				log.info("Scanner " + scannerid + " started");
 				return;
+			} else {
+				int bp = 0;
 			}
 		}
 		{
@@ -114,6 +119,8 @@ public class Service {
 				scannerMap.get(scannerid).setSubmited(false);
 				playSound();
 				return;
+			} else {
+				int bp = 0;
 			}
 		}
 	}
@@ -129,6 +136,8 @@ public class Service {
 
 			log.info("Scanner " + scannerid + " at postion " + position);
 			currentScans.put(scannerid, scan);
+		} else {
+			int bp = 0;
 		}
 	}
 
@@ -153,6 +162,8 @@ public class Service {
 			} else {
 				log.trace("received redundant ore scan result");
 			}
+		} else {
+			int bp = 0;
 		}
 	}
 
@@ -194,5 +205,19 @@ public class Service {
 
 	public ObservableList<Scanner> getScannerList() {
 		return list;
+	}
+
+	public void handleAssetRights(DuLogRecord record) {
+		Matcher matcher = asset2.matcher(record.message);
+		if (matcher.matches()) {
+			long planetId = Long.valueOf(matcher.group("planetId"));
+			long tileId = Long.valueOf(matcher.group("tileId"));
+			log.info("received asset rights message for {} on {}", tileId, planetId);
+			if (knownAssets.add(planetId * 1000000 + tileId)) {
+				dumapService.sendClaimedTile(planetId, tileId, record.millis);
+			}
+		} else {
+			int bp = 0;
+		}
 	}
 }
