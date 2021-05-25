@@ -8,6 +8,12 @@ To run the DUMapCompanion you have to use atleast Java 11.
 
 You can always find the newest version at the github release page https://github.com/tiramon/du-map-companion/releases
 
+## Where do i get a Java Version working with this application
+
+Best uninstall any old version before installing the new one.
+
+If you have no Java installed ore only a old version, the current versions can be found at https://www.oracle.com/de/java/technologies/javase-downloads.html
+
 ## How to start the companion
 
 If your Java is installed correctly double clicking the JAR should be enough.
@@ -28,8 +34,11 @@ The results will be transfered to the website as soon as you click the ingame sa
 ## Change settings
 
 If you want to use another sound for scan finished than the default you can create a file called 'application.properties' in the folder where you run the jar file and add one of the following lines
+
 territoryscan.sound=None
+
 territoryscan.sound=Pling
+
 territoryscan.sound=Alien Voice
 
 ## FAQ
