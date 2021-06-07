@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
@@ -21,10 +22,13 @@ import de.tiramon.du.map.thread.FileReader;
 import de.tiramon.du.map.thread.NewFileWatcher;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
@@ -36,6 +40,8 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
@@ -115,6 +121,7 @@ public class DuMapDialog extends Application {
 	}
 
 	private void loginDone(Stage primaryStage) {
+		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy HH:mm:ss z");
 		Label logfileLabel = new Label();
 		logfileLabel.setPrefWidth(600);
 
@@ -150,6 +157,32 @@ public class DuMapDialog extends Application {
 		Button playButton = new Button(">");
 		playButton.setOnAction(event -> service.playSound());
 		hbox.getChildren().add(playButton);
+
+		hbox.getChildren().add(new Label("Last entry read:"));
+		Label lastEntryReadLabel = new Label();
+		lastEntryReadLabel.textProperty().bind(Bindings.createStringBinding(() -> {
+			return sdf.format(new Date(fileReader.getLastEntryReadProperty().get()));
+		}, fileReader.getLastEntryReadProperty()));
+		hbox.getChildren().add(lastEntryReadLabel);
+
+		hbox.getChildren().add(new Label("Idle:"));
+		Circle working = new Circle();
+		double stroke = 0;
+		double radius = 7.;
+
+		working.setStrokeWidth(stroke);
+		working.setRadius(radius);
+		working.setCenterX(radius + stroke);
+		working.setCenterY(radius + stroke);
+
+		working.setStroke(fileReader.isWorkingProperty().get() ? Color.DARKGREEN : Color.ORANGE);
+		working.setFill(fileReader.isWorkingProperty().get() ? Color.GREEN : Color.YELLOW);
+		Group workingGroup = new Group(working);
+		fileReader.isWorkingProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
+			working.setFill(newValue ? Color.YELLOW : Color.GREEN);
+			working.setStroke(newValue ? Color.ORANGE : Color.DARKGREEN);
+		});
+		hbox.getChildren().add(workingGroup);
 
 		TableColumn<Scanner, Number> idColumn = new TableColumn<>("Scanner Id");
 		idColumn.setCellValueFactory(param -> param.getValue().idProperty());
@@ -204,7 +237,6 @@ public class DuMapDialog extends Application {
 		});
 		timeLeftColumn.setPrefWidth(40);
 
-		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy HH:mm:ss z");
 		TableColumn<Scanner, Number> lastStateChangeColumn = new TableColumn<>("last change");
 		lastStateChangeColumn.setCellValueFactory(param -> param.getValue().lastStateChangeProperty());
 		lastStateChangeColumn.setCellFactory(e -> new TableCell<Scanner, Number>() {
