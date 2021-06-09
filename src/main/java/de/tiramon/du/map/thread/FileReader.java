@@ -26,7 +26,11 @@ import de.tiramon.du.map.model.DUMethod;
 import de.tiramon.du.map.model.DuLogRecord;
 import de.tiramon.du.map.service.Service;
 import de.tiramon.du.map.utils.MethodEnumConverter;
+import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleLongProperty;
 
 public class FileReader implements Runnable {
 	protected Logger log = LoggerFactory.getLogger(getClass());
@@ -45,6 +49,9 @@ public class FileReader implements Runnable {
 
 	Path currentPath = null;
 	List<Path> pathQueue = new CopyOnWriteArrayList<>();
+
+	private SimpleLongProperty lastEntryReadProperty = new SimpleLongProperty();
+	private SimpleBooleanProperty workingProperty = new SimpleBooleanProperty();
 
 	public FileReader() {
 	}
@@ -112,6 +119,7 @@ public class FileReader implements Runnable {
 
 				if (shutdown) {
 					log.info("shutdown");
+					workingProperty.set(false);
 					return;
 				}
 
@@ -129,9 +137,10 @@ public class FileReader implements Runnable {
 							return;
 						}
 					}
-
+					workingProperty.set(false);
 					Thread.sleep(1000);
 				} else {
+					workingProperty.set(true);
 					line = line.trim();
 					// if end of record entry is reached, parse and process
 					if (line.equals("</record>")) {
@@ -145,7 +154,12 @@ public class FileReader implements Runnable {
 							// System.out.println(convert(lineBuffer));
 						}
 						int bp = 0;
+						if (record != null) {
+							final long timestamp = record.millis;
+							Platform.runLater(() -> lastEntryReadProperty.set(timestamp));
+						}
 						if (record != null && record.method != null) {
+
 							/*
 							 * record.initId(); if (record.id == 2772531619L) { this.handleService.handleAsset(record); } else if (record.id == 384688231L) { this.handleService.handleScanStatusChange(record); } else if (record.id == 848570271L) { this.handleService.handleScanOre(record); } else if (record.id == 411172400L) { this.handleService.handleScanPosition(record); } else if (record.id == 1400672326L) { this.handleService.handleUser(record); }
 							 */
@@ -181,6 +195,7 @@ public class FileReader implements Runnable {
 			}
 		} catch (Exception e) {
 			System.err.println(convert(lineBuffer));
+			workingProperty.set(false);
 			throw new RuntimeException(e);
 		}
 	}
@@ -219,5 +234,13 @@ public class FileReader implements Runnable {
 
 	public List<Path> getQueue() {
 		return pathQueue;
+	}
+
+	public SimpleLongProperty getLastEntryReadProperty() {
+		return lastEntryReadProperty;
+	}
+
+	public ReadOnlyBooleanProperty isWorkingProperty() {
+		return ReadOnlyBooleanProperty.readOnlyBooleanProperty(workingProperty);
 	}
 }
