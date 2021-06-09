@@ -184,6 +184,12 @@ public class DuMapDialog extends Application {
 		});
 		hbox.getChildren().add(workingGroup);
 
+		CheckBox alwaysOnTopCheckbox = new CheckBox("Always on top");
+		alwaysOnTopCheckbox.selectedProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
+			primaryStage.setAlwaysOnTop(newValue);
+		});
+
+		hbox.getChildren().add(alwaysOnTopCheckbox);
 		TableColumn<Scanner, Number> idColumn = new TableColumn<>("Scanner Id");
 		idColumn.setCellValueFactory(param -> param.getValue().idProperty());
 
