@@ -30,6 +30,8 @@ The results will be transfered to the website as soon as you click the ingame sa
 
 * click on the row of the table to copy the pos link to the clipboard
 * use the dropdown to change the sound played when a territory scanner finishes his scan/is resetted by movement
+* status indicator at what point of the log the parser currently is and if currently parsing or waiting
+* always on top checkbox
 
 ## Change settings
 
