@@ -18,6 +18,7 @@ import de.tiramon.du.map.model.Scanner;
 import de.tiramon.du.map.model.Scanner.ScannerState;
 import de.tiramon.du.map.model.Sound;
 import de.tiramon.du.map.service.Service;
+import de.tiramon.du.map.service.SoundService;
 import de.tiramon.du.map.thread.FileReader;
 import de.tiramon.du.map.thread.NewFileWatcher;
 import javafx.application.Application;
@@ -31,6 +32,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -51,6 +53,7 @@ public class DuMapDialog extends Application {
 
 	private OAuthBuilder builder = InstanceProvider.getOAuthBuilder();
 	private Service service = InstanceProvider.getService();
+	private SoundService soundService = InstanceProvider.getSoundService();
 
 	private Thread fileReaderThread;
 	private Thread fileWatcherThread;
@@ -185,11 +188,31 @@ public class DuMapDialog extends Application {
 		hbox.getChildren().add(workingGroup);
 
 		CheckBox alwaysOnTopCheckbox = new CheckBox("Always on top");
+		alwaysOnTopCheckbox.setSelected(primaryStage.isAlwaysOnTop());
 		alwaysOnTopCheckbox.selectedProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 			primaryStage.setAlwaysOnTop(newValue);
 		});
 
-		hbox.getChildren().add(alwaysOnTopCheckbox);
+		CheckBox soundFrameworkCheckbox = new CheckBox("SoundFramework");
+		soundFrameworkCheckbox.setSelected(soundService.isEnabled());
+		soundFrameworkCheckbox.selectedProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
+			soundService.setEnabled(newValue);
+		});
+
+		Slider volumeSlider = new Slider(0., 100., 100.);
+		volumeSlider.setMajorTickUnit(25.0);
+		volumeSlider.setMinorTickCount(100);
+		volumeSlider.setShowTickMarks(true);
+		volumeSlider.setShowTickLabels(true);
+		volumeSlider.valueProperty().addListener((ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
+			soundService.setBaseVolume(newValue.doubleValue() / 100.);
+		});
+		volumeSlider.setValue(Double.valueOf(InstanceProvider.getProperties().getProperty("sound.framework.volume", "100")));
+		VBox options = new VBox(10);
+		options.getChildren().add(alwaysOnTopCheckbox);
+		options.getChildren().add(soundFrameworkCheckbox);
+		options.getChildren().add(volumeSlider);
+		hbox.getChildren().add(options);
 		TableColumn<Scanner, Number> idColumn = new TableColumn<>("Scanner Id");
 		idColumn.setCellValueFactory(param -> param.getValue().idProperty());
 

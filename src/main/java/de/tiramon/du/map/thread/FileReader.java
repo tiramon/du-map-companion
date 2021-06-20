@@ -43,15 +43,13 @@ public class FileReader implements Runnable {
 	// exception is thrown
 	private boolean shutdown = false;
 
-	private Object object;
-
-	private List<Path> list;
-
-	Path currentPath = null;
-	List<Path> pathQueue = new CopyOnWriteArrayList<>();
+	private Path currentPath = null;
+	private List<Path> pathQueue = new CopyOnWriteArrayList<>();
 
 	private SimpleLongProperty lastEntryReadProperty = new SimpleLongProperty();
 	private SimpleBooleanProperty workingProperty = new SimpleBooleanProperty();
+
+	private boolean skipToEnd = Boolean.parseBoolean(InstanceProvider.getProperties().getProperty("skip.to.end", "false"));
 
 	public FileReader() {
 	}
@@ -110,6 +108,22 @@ public class FileReader implements Runnable {
 		List<String> lineBuffer = new ArrayList<>();
 		long start = System.currentTimeMillis();
 		try (BufferedReader br = Files.newBufferedReader(path)) {
+			if (skipToEnd) {
+				log.info("skipping");
+				long skip = Long.MAX_VALUE;
+				long skiped;
+
+				do {
+					skiped = br.skip(skip);
+					log.info("skiped {}", skiped);
+				} while (skiped == skip);
+				skipToEnd = false;
+				DuMapDialog.init = true;
+				log.info("skiping done");
+			} else {
+				log.info("no skipping");
+			}
+			log.info("start interpreting entries");
 			while (true) {
 				long lastModified = path.toFile().lastModified();
 				// if (lastModified < System.currentTimeMillis() - 30 * 1000) {
@@ -138,7 +152,7 @@ public class FileReader implements Runnable {
 						}
 					}
 					workingProperty.set(false);
-					Thread.sleep(1000);
+					Thread.sleep(100);
 				} else {
 					workingProperty.set(true);
 					line = line.trim();
@@ -173,6 +187,8 @@ public class FileReader implements Runnable {
 								this.handleService.handleScanPosition(record);
 							} else if (record.method == DUMethod.ASSET_RIGHTS) {
 								this.handleService.handleAssetRights(record);
+							} else if (record.method == DUMethod.LOG_INFO) {
+								this.handleService.handleLogInfo(record);
 							}
 						}
 						// addAvgReadPerRecord(System.currentTimeMillis() - start);

@@ -11,6 +11,8 @@ public class DuMapCompanion {
 	public static void main(String[] args) {
 		String javaversion = System.getProperty("java.version");
 		log.info("Running Java version: {}", javaversion);
+		InstanceProvider.init();
 		Application.launch(DuMapDialog.class, args);
+
 	}
 }

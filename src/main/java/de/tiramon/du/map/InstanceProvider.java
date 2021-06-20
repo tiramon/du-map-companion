@@ -16,16 +16,26 @@ import com.google.gson.Gson;
 import bell.oauth.discord.domain.User;
 import bell.oauth.discord.main.OAuthBuilder;
 import de.tiramon.du.map.service.Service;
+import de.tiramon.du.map.service.SoundService;
 
 public class InstanceProvider {
 	protected static Logger log = LoggerFactory.getLogger(InstanceProvider.class);
 
 	private static Gson gson = new Gson();
-	private static Properties properties = initProperties();
-	private static OAuthBuilder oauthbuilder = oauthBuilder();
-	private static Service service = new Service();
+	private static Properties properties = null;
+	private static OAuthBuilder oauthbuilder = null;
+	private static Service service = null;
+	private static SoundService soundService = null;
+
+	static void init() {
+		properties = initProperties();
+		oauthbuilder = oauthBuilder();
+		soundService = new SoundService(Boolean.valueOf(properties.getProperty("sound.framework.enabled", "false")));
+		service = new Service();
+	}
 
 	private static Properties initProperties() {
+
 		Properties properties = new Properties();
 		File file = new File("application.properties");
 		if (file.exists() && file.canRead()) {
@@ -75,5 +85,9 @@ public class InstanceProvider {
 
 	public static Service getService() {
 		return service;
+	}
+
+	public static SoundService getSoundService() {
+		return soundService;
 	}
 }

@@ -6,7 +6,8 @@ public enum DUMethod {
 	TERRITORYSCANNER_POSITION("NQ::Game::TerritoryScan::initHFSM::<lambda>::operator ()"),
 	TERRITORYSCANNER_RESULT("NQ::Game::TerritoryScan::getResults"),
 	ASSET_CLAIM("NQ::Game::TerritoryManager::onTerritoryClaimed"),
-	ASSET_RIGHTS("NQ::RDMS::RightsCache<class NQ::Game::Territory>::requestRights::<lambda>::operator ()");
+	ASSET_RIGHTS("NQ::RDMS::RightsCache<class NQ::Game::Territory>::requestRights::<lambda>::operator ()"),
+	LOG_INFO("NQ::DP::System::logInfo");
 	//@formatter:on
 
 	private DUMethod(String dumethod) {

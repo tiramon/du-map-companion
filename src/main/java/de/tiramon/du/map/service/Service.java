@@ -1,5 +1,6 @@
 package de.tiramon.du.map.service;
 
+import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +26,9 @@ import de.tiramon.du.map.model.Scanner;
 import de.tiramon.du.map.model.Scanner.ScannerState;
 import de.tiramon.du.map.model.Sound;
 import de.tiramon.du.map.model.User;
+import de.tiramon.du.map.sound.SoundCommand;
+import de.tiramon.du.map.sound.SoundConfig;
+import javafx.application.Platform;
 import javafx.beans.Observable;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -32,10 +36,12 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
+import javafx.util.Duration;
 
 public class Service {
 	protected Logger log = LoggerFactory.getLogger(getClass());
 
+	private SoundService soundService = InstanceProvider.getSoundService();
 	private String soundSetting = InstanceProvider.getProperties().getProperty("territoryscan.sound");
 
 	private DuMapService dumapService = new DuMapService();
@@ -49,6 +55,27 @@ public class Service {
 	private Pattern scanner_result_position = Pattern.compile("TerritoryScan\\[\\d+#(?<scannerid>\\d+)\\] end: lasted (\\d+\\.\\d+) seconds coordinates: (?<position>::pos\\{\\d+,\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+})");
 
 	private Pattern scanOrePattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: material: (?<oreName>[A-Za-z ]+) : (?<oreAmount>[\\de+\\.]+) \\* \\d+");
+
+	/*
+	 * sound_play|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Plays a concurrent sound sound_notification|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Lowers volume on all other sounds for its duration, and plays overtop sound_q|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Plays a sound after all other queued sounds finish
+	 *
+	 * -- The following use the IDs that were specified in the previous three
+	 *
+	 * sound_volume|ID(string)|Volume(int 0-100)
+	 *
+	 * sound_pause|Optional ID(string) -- If no ID is specified, pauses all sounds sound_stop|Optional ID(string) -- If no ID is specified, stops all sounds sound_resume|Optional ID(string) -- If no ID is specified, resumes all paused sounds
+	 */
+
+	private Pattern soundCommand = Pattern.compile("^(?<command>sound_notification|sound_play|sound_q|sound_pause|sound_stop|sound_resume|sound_volume|sound_loop)\\|");
+	private Pattern soundQPattern = Pattern.compile("sound_q\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
+	private Pattern soundNotificationPattern = Pattern.compile("sound_notification\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
+	private Pattern soundPlayPattern = Pattern.compile("sound_play\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
+	private Pattern soundLoopPattern = Pattern.compile("sound_loop\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
+	private Pattern soundPausePattern = Pattern.compile("sound_pause\\|(?<id>.+?)");
+	private Pattern soundStopPattern = Pattern.compile("sound_stop\\|(?<id>.+?)");
+	private Pattern soundResumePattern = Pattern.compile("sound_resume\\|(?<id>.+?)");
+	private Pattern soundVolumePattern = Pattern.compile("sound_volume\\|(?<id>.+?)\\|(?<volume>\\d+)");
+
 	private User user;
 	private Set<Long> knownAssets = ConcurrentHashMap.newKeySet();
 
@@ -188,8 +215,9 @@ public class Service {
 		if (strFilename != null) {
 			URL url = getClass().getClassLoader().getResource(strFilename);
 			Media hit = new Media(url.toString());
-			MediaPlayer mediaPlayer = new MediaPlayer(hit);
 
+			MediaPlayer mediaPlayer = new MediaPlayer(hit);
+			mediaPlayer.setVolume(soundService.baseVolumeProperty());
 			mediaPlayer.play();
 		}
 		log.debug("played sound");
@@ -220,4 +248,80 @@ public class Service {
 			int bp = 0;
 		}
 	}
+
+	public void handleLogInfo(DuLogRecord record) {
+		Matcher matcher = soundCommand.matcher(record.message);
+		if (matcher.find()) {
+			if (!DuMapDialog.init) {
+				return;
+			}
+			SoundCommand command = SoundCommand.valueOf(matcher.group("command").split("_")[1].toUpperCase());
+			String[] parameter = record.message.split("\\|");
+			if (command == SoundCommand.PLAY || command == SoundCommand.LOOP) {
+				File file = new File(parameter[1]);
+				if (file.exists() && file.canRead()) {
+					String id = parameter[2];
+					Long volume = parameter.length < 4 ? 100 : Long.valueOf(parameter[3]);
+					Platform.runLater(() -> soundService.playConcurrent(new SoundConfig(parameter[1], id, volume), command == SoundCommand.LOOP));
+				} else {
+					log.warn("Skipping current sound command '{}' because reference file does not exist or is not readable", record.message);
+				}
+			} else if (command == SoundCommand.NOTIFICATION) {
+				File file = new File(parameter[1]);
+				if (file.exists() && file.canRead()) {
+					String id = parameter[2];
+					Long volume = parameter.length < 4 ? 100 : Long.valueOf(parameter[3]);
+					Platform.runLater(() -> soundService.addNotification(new SoundConfig(parameter[1], id, volume)));
+				} else {
+					log.warn("Skipping current sound command '{}' because reference file does not exist or is not readable", record.message);
+				}
+			} else if (command == SoundCommand.Q) {
+				File file = new File(parameter[1]);
+				if (file.exists() && file.canRead()) {
+					String id = parameter[2];
+					Long volume = parameter.length < 4 ? 100 : Long.valueOf(parameter[3]);
+					Platform.runLater(() -> soundService.addToQueue(new SoundConfig(parameter[1], id, volume)));
+				} else {
+					log.warn("Skipping current sound command '{}' because reference file does not exist or is not readable", record.message);
+				}
+			} else if (command == SoundCommand.VOLUME) {
+				String id = parameter[1];
+				Long volume = Long.valueOf(parameter[2]);
+
+			} else if (command == SoundCommand.PAUSE) {
+				String id = parameter.length < 2 ? null : parameter[1];
+				Platform.runLater(() -> soundService.pauseQueue(id));
+			} else if (command == SoundCommand.STOP) {
+				String id = parameter.length < 2 ? null : parameter[1];
+				Platform.runLater(() -> soundService.stopQueue(id));
+			} else if (command == SoundCommand.RESUME) {
+				String id = parameter.length < 2 ? null : parameter[1];
+				Platform.runLater(() -> soundService.resumeQueue(id));
+			}
+		}
+
+	}
+
+	private void playSound(String strFilename, Integer volume) {
+		if (!DuMapDialog.init) {
+			return;
+		}
+		if (volume == null)
+			volume = 100;
+		if (volume < 0)
+			volume = 0;
+
+		File file = new File(strFilename);
+		if (file.exists()) {
+			log.info("playing " + file.toString());
+			Media hit = new Media(file.toURI().toString());
+			MediaPlayer mediaPlayer = new MediaPlayer(hit);
+			mediaPlayer.setStartTime(Duration.ZERO);
+			mediaPlayer.setVolume(volume);
+			mediaPlayer.play();
+		} else {
+			log.warn("File not found {}", file.getAbsolutePath());
+		}
+	}
+
 }
