@@ -36,7 +36,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import javafx.util.Duration;
 
 public class Service {
 	protected Logger log = LoggerFactory.getLogger(getClass());
@@ -67,14 +66,6 @@ public class Service {
 	 */
 
 	private Pattern soundCommand = Pattern.compile("^(?<command>sound_notification|sound_play|sound_q|sound_pause|sound_stop|sound_resume|sound_volume|sound_loop)\\|");
-	private Pattern soundQPattern = Pattern.compile("sound_q\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
-	private Pattern soundNotificationPattern = Pattern.compile("sound_notification\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
-	private Pattern soundPlayPattern = Pattern.compile("sound_play\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
-	private Pattern soundLoopPattern = Pattern.compile("sound_loop\\|(?<path>.*?)\\|(?<id>.+?)\\|(?<volume>\\d+)");
-	private Pattern soundPausePattern = Pattern.compile("sound_pause\\|(?<id>.+?)");
-	private Pattern soundStopPattern = Pattern.compile("sound_stop\\|(?<id>.+?)");
-	private Pattern soundResumePattern = Pattern.compile("sound_resume\\|(?<id>.+?)");
-	private Pattern soundVolumePattern = Pattern.compile("sound_volume\\|(?<id>.+?)\\|(?<volume>\\d+)");
 
 	private User user;
 	private Set<Long> knownAssets = ConcurrentHashMap.newKeySet();
@@ -301,27 +292,4 @@ public class Service {
 		}
 
 	}
-
-	private void playSound(String strFilename, Integer volume) {
-		if (!DuMapDialog.init) {
-			return;
-		}
-		if (volume == null)
-			volume = 100;
-		if (volume < 0)
-			volume = 0;
-
-		File file = new File(strFilename);
-		if (file.exists()) {
-			log.info("playing " + file.toString());
-			Media hit = new Media(file.toURI().toString());
-			MediaPlayer mediaPlayer = new MediaPlayer(hit);
-			mediaPlayer.setStartTime(Duration.ZERO);
-			mediaPlayer.setVolume(volume);
-			mediaPlayer.play();
-		} else {
-			log.warn("File not found {}", file.getAbsolutePath());
-		}
-	}
-
 }

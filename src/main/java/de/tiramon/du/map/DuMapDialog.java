@@ -1,13 +1,9 @@
 package de.tiramon.du.map;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,16 +17,19 @@ import de.tiramon.du.map.service.Service;
 import de.tiramon.du.map.service.SoundService;
 import de.tiramon.du.map.thread.FileReader;
 import de.tiramon.du.map.thread.NewFileWatcher;
+import de.tiramon.du.map.update.UpdateService;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
@@ -54,6 +53,7 @@ public class DuMapDialog extends Application {
 	private OAuthBuilder builder = InstanceProvider.getOAuthBuilder();
 	private Service service = InstanceProvider.getService();
 	private SoundService soundService = InstanceProvider.getSoundService();
+	private UpdateService updateService = InstanceProvider.getUpdateService();
 
 	private Thread fileReaderThread;
 	private Thread fileWatcherThread;
@@ -65,13 +65,7 @@ public class DuMapDialog extends Application {
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
-		Manifest manifest = getManifest(this.getClass());
-		String version;
-		if (manifest != null) {
-			version = getVersion(manifest);
-		} else {
-			version = "?.?.?";
-		}
+		String version = updateService.getSemanticVersion().toString();
 		primaryStage.setTitle("DuMap Companion - v" + version);
 		InputStream in = getClass().getClassLoader().getResourceAsStream("favicon.png");
 		primaryStage.getIcons().add(new Image(in));
@@ -125,7 +119,7 @@ public class DuMapDialog extends Application {
 
 	private void loginDone(Stage primaryStage) {
 		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy HH:mm:ss z");
-		Label logfileLabel = new Label();
+		Label logfileLabel = new Label("No logfile found");
 		logfileLabel.setPrefWidth(600);
 
 		fileReader = new FileReader();
@@ -304,6 +298,29 @@ public class DuMapDialog extends Application {
 			clipboard.setContent(content);
 		});
 
+		boolean updateAvailable = updateService.isUpdateAvailable();
+		if (updateAvailable) {
+			HBox updateBox = new HBox(10);
+			updateBox.setAlignment(Pos.BASELINE_CENTER);
+			Hyperlink releaseLink = new Hyperlink();
+			releaseLink.setText("Release");
+			releaseLink.setOnAction((event) -> getHostServices().showDocument(updateService.getGithubReleaseInformation().getHtmlUrl()));
+			Hyperlink jarLink = new Hyperlink();
+			jarLink.setText("Jar");
+			jarLink.setOnAction((event) -> getHostServices().showDocument(updateService.getGithubReleaseInformation().getAssets()[0].getBrowserDownloadUrl()));
+			log.info("Update available");
+
+			Label updateAvailableLabel = new Label("Update available " + InstanceProvider.getUpdateService().getSemanticGithubVersion());
+			updateAvailableLabel.setStyle("-fx-font-weight: bold");
+			updateBox.getChildren().add(updateAvailableLabel);
+			updateBox.getChildren().add(releaseLink);
+			updateBox.getChildren().add(jarLink);
+
+			pane.getChildren().add(updateBox);
+		} else {
+			log.info("Version is alread up to date");
+		}
+
 		pane.getChildren().add(logfileLabel);
 		pane.getChildren().add(hbox);
 		VBox.setVgrow(scannerList, Priority.ALWAYS);
@@ -313,33 +330,4 @@ public class DuMapDialog extends Application {
 		primaryStage.setScene(scene);
 		primaryStage.show();
 	}
-
-	public static Manifest getManifest(Class<?> theClass) throws IOException {
-
-		// Find the path of the compiled class
-		String classPath = theClass.getResource(theClass.getSimpleName() + ".class").toString();
-
-		// Find the path of the lib which includes the class
-		if (classPath.lastIndexOf('!') == -1) {
-			return null;
-		}
-		String libPath = classPath.substring(0, classPath.lastIndexOf('!'));
-		if (libPath.endsWith("/BOOT-INF/classes")) {
-			libPath = libPath.substring(0, libPath.lastIndexOf('!'));
-		}
-		// Find the path of the file inside the lib jar
-		String filePath = libPath + "!/META-INF/MANIFEST.MF";
-
-		// We look at the manifest file, getting three attributes out of it
-		return new Manifest(new URL(filePath).openStream());
-	}
-
-	public static String getVersion(Manifest manifest) {
-		if (manifest == null) {
-			return "?.?.?";
-		}
-		Attributes attr = manifest.getMainAttributes();
-		return attr.getValue("Implementation-Version");
-	}
-
 }
