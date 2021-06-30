@@ -19,6 +19,7 @@ import com.sun.javafx.collections.ObservableListWrapper;
 
 import de.tiramon.du.map.DuMapDialog;
 import de.tiramon.du.map.InstanceProvider;
+import de.tiramon.du.map.model.ClaimType;
 import de.tiramon.du.map.model.DuLogRecord;
 import de.tiramon.du.map.model.Ore;
 import de.tiramon.du.map.model.Scan;
@@ -48,6 +49,7 @@ public class Service {
 
 	private Pattern asset = Pattern.compile("onTerritoryClaimed\\(planet=(?<planetId>\\d+), tile=(?<tileId>\\d+)\\)");
 	private Pattern asset2 = Pattern.compile("Received rights for asset AssetId:\\[type = Territory, construct = ConstructId:\\[constructId = 0\\], element = ElementId:\\[elementId = 0\\], territory = TerritoryTileIndex:\\[planetId = (?<planetId>\\d+), tileIndex = (?<tileId>\\d+)\\], item = ItemId:\\[typeId = 0, instanceId = 0, ownerId = EntityId:\\[playerId = 0, organizationId = 0\\]\\], organization = OrganizationId:\\[organizationId = 0\\]\\]");
+	private Pattern assetReleased = Pattern.compile("onTerritoryReleased\\(planet=(?<planetId>\\d+), tile=(?<tileId>\\d+)\\)");
 	private Pattern userPattern = Pattern.compile("LoginResponse:\\[playerId = (?<playerId>\\d+), username = (?<playerName>.+?), communityId = (?<communityId>\\d+), ip = [\\d+\\.\\|]+, timeSeconds = @\\((?<loginTimestamp>\\d+)\\) \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]");
 
 	private Pattern scanner_start = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Start -- id (?<scannerid>\\d+)");
@@ -111,9 +113,8 @@ public class Service {
 			long planetId = Long.valueOf(matcher.group("planetId"));
 			long tileId = Long.valueOf(matcher.group("tileId"));
 			log.info("received asset message for {} on {}", tileId, planetId);
-			if (knownAssets.add(planetId * 1000000 + tileId)) {
-				dumapService.sendClaimedTile(planetId, tileId, record.millis);
-			}
+			knownAssets.add(planetId * 1000000 + tileId);
+			dumapService.sendClaimedTile(planetId, tileId, record.millis, ClaimType.CLAIM);
 		} else {
 			int bp = 0;
 		}
@@ -242,7 +243,7 @@ public class Service {
 			long tileId = Long.valueOf(matcher.group("tileId"));
 			log.info("received asset rights message for {} on {}", tileId, planetId);
 			if (knownAssets.add(planetId * 1000000 + tileId)) {
-				dumapService.sendClaimedTile(planetId, tileId, record.millis);
+				dumapService.sendClaimedTile(planetId, tileId, record.millis, ClaimType.UPDATE);
 			}
 		} else {
 			int bp = 0;
@@ -321,6 +322,20 @@ public class Service {
 			mediaPlayer.play();
 		} else {
 			log.warn("File not found {}", file.getAbsolutePath());
+		}
+	}
+
+	public void handleAssetReleased(DuLogRecord record) {
+		Matcher matcher = assetReleased.matcher(record.message);
+		if (matcher.matches()) {
+			long planetId = Long.valueOf(matcher.group("planetId"));
+			long tileId = Long.valueOf(matcher.group("tileId"));
+			log.info("received asset released message for {} on {}", tileId, planetId);
+			knownAssets.remove(planetId * 1000000 + tileId);
+			dumapService.sendClaimedTile(planetId, tileId, record.millis, ClaimType.RELEASE);
+
+		} else {
+			int bp = 0;
 		}
 	}
 

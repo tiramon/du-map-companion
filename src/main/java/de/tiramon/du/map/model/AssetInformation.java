@@ -7,11 +7,13 @@ public class AssetInformation {
 	private long planetId;
 	private long tileId;
 	private long time;
+	private ClaimType type;
 
-	public AssetInformation(long celestialId, long tileId2, long time2) {
+	public AssetInformation(long celestialId, long tileId2, long time2, ClaimType type) {
 		this.planetId = celestialId;
 		this.tileId = tileId2;
 		this.time = time2;
+		this.type = type;
 	}
 
 	public long getPlanetId() {
@@ -36,5 +38,13 @@ public class AssetInformation {
 
 	public void setTime(long time) {
 		this.time = time;
+	}
+
+	public ClaimType getType() {
+		return type;
+	}
+
+	public void setType(ClaimType type) {
+		this.type = type;
 	}
 }
