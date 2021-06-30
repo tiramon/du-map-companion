@@ -28,7 +28,6 @@ import de.tiramon.du.map.service.Service;
 import de.tiramon.du.map.utils.MethodEnumConverter;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyBooleanProperty;
-import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleLongProperty;
 
@@ -37,13 +36,11 @@ public class FileReader implements Runnable {
 
 	private Service handleService = InstanceProvider.getService();
 	private XStream xstream;
-	private ReadOnlyObjectProperty<Path> currentLogFileProperty;
 
 	// set to true when application is about to close so reading is stopped and no
 	// exception is thrown
 	private boolean shutdown = false;
 
-	private Path currentPath = null;
 	private List<Path> pathQueue = new CopyOnWriteArrayList<>();
 
 	private SimpleLongProperty lastEntryReadProperty = new SimpleLongProperty();
@@ -161,7 +158,6 @@ public class FileReader implements Runnable {
 						} catch (com.thoughtworks.xstream.converters.ConversionException e) {
 							log.debug(convert(lineBuffer));
 						}
-						int bp = 0;
 
 						// if we have a valid record element update the timestamp to show in the companion
 						if (record != null) {

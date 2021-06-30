@@ -17,6 +17,7 @@ import bell.oauth.discord.domain.User;
 import bell.oauth.discord.main.OAuthBuilder;
 import de.tiramon.du.map.service.Service;
 import de.tiramon.du.map.service.SoundService;
+import de.tiramon.du.map.update.UpdateService;
 
 public class InstanceProvider {
 	protected static Logger log = LoggerFactory.getLogger(InstanceProvider.class);
@@ -26,9 +27,11 @@ public class InstanceProvider {
 	private static OAuthBuilder oauthbuilder = null;
 	private static Service service = null;
 	private static SoundService soundService = null;
+	private static UpdateService updateService = null;
 
 	static void init() {
 		properties = initProperties();
+		updateService = new UpdateService();
 		oauthbuilder = oauthBuilder();
 		soundService = new SoundService(Boolean.valueOf(properties.getProperty("sound.framework.enabled", "false")));
 		service = new Service();
@@ -89,5 +92,9 @@ public class InstanceProvider {
 
 	public static SoundService getSoundService() {
 		return soundService;
+	}
+
+	public static UpdateService getUpdateService() {
+		return updateService;
 	}
 }
