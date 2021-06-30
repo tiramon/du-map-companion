@@ -1,5 +1,26 @@
 # DuMapCompanion
 
+## Table of contents
+* [Features](#features)
+* [Requirements](#requirements)
+* [How to download the current Version](#how-to-download-the-current-version)
+* [Where do i get a Java Version working with this application](#where-do-i-get-a-java-version-working-with-this-application)
+* [How to start the companion](#how-to-start-the-companion)
+* [How to use the application](#how-to-use-the-application)
+* [How to use the integrated sound framework](#how-to-use-the-integrated-sound-framework)
+* [Change settings (application.properties)](#change-settings-applicationproperties)
+    * [territoryscan.sound](#territoryscansound)
+    * [skip.to.end](#skiptoend)
+    * [sound.framework.enabled](#soundframeworkenabled)
+    * [sound.framework.volume](#soundframeworkvolume)
+    * [access](#access)
+    * [territoryscan.sound](#territoryscansound)
+* [FAQ](#faq)
+     * [When i double click the jar, the application does not start](#when-i-double-click-the-jar-the-application-does-not-start)
+     * [The application uses up to 1GB of memory which is to much for my system](#the-application-uses-up-to-1gb-of-memory-which-is-to-much-for-my-system)
+     * [When i start the companion i get an error 'UnsupportedClassVersionError'](#when-i-start-the-companion-i-get-an-error-unsupportedclassversionerror)
+     * [When i start the companion i get a 'javax.net.ssl.SSLException: No PSK available. Unable to resume.'](#when-i-start-the-companion-i-get-a-javaxnetsslsslexception-no-psk-available-unable-to-resume)
+
 ## Features
 
 * authentication with discord
