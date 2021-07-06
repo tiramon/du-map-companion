@@ -122,25 +122,19 @@ public class FileReader implements Runnable {
 			}
 			log.info("start interpreting entries");
 			while (true) {
-				long lastModified = path.toFile().lastModified();
-				// if (lastModified < System.currentTimeMillis() - 30 * 1000) {
-				// log.info("stop reading file, because it wasn't changed for 30s");
-				// return;
-				// }
-
+				// shutdown check to escape the infinite loop when program should exit
 				if (shutdown) {
 					log.info("shutdown");
 					workingProperty.set(false);
 					return;
 				}
 
-				// if (!currentLogFileProperty.get().equals(path)) {
-				// log.info("stoping reading old logfile");
-				// return;
-				// }
 				line = br.readLine();
 
 				if (line == null) {
+					// if nothing new is read from the file change the working lamp and got to sleep for a few ms
+					// also set the flag that the companion is now initialized and sounds are played again
+					// and check if there is already a new file in the queue, because if that is the case the current log file probably just reach EOF
 					DuMapDialog.init = true;
 					synchronized (pathQueue) {
 						if (!pathQueue.isEmpty()) {
@@ -158,12 +152,14 @@ public class FileReader implements Runnable {
 						lineBuffer.add(line);
 						DuLogRecord record = null;
 
+						// map the gathered lines to a record, this can result in errors, because NQ uses invalid xml and not every occurence is cleaned in the map method
 						try {
 							record = mapToRecord(lineBuffer);
-
 						} catch (com.thoughtworks.xstream.converters.ConversionException e) {
-							// System.out.println(convert(lineBuffer));
+							log.debug(convert(lineBuffer));
 						}
+
+						// if we have a valid record element update the timestamp to show in the companion
 						if (record != null) {
 							final long timestamp = record.millis;
 							Platform.runLater(() -> lastEntryReadProperty.set(timestamp));
@@ -183,15 +179,15 @@ public class FileReader implements Runnable {
 								this.handleService.handleScanPosition(record);
 							} else if (record.method == DUMethod.ASSET_RIGHTS) {
 								this.handleService.handleAssetRights(record);
+							} else if (record.method == DUMethod.ASSET_RELEASED) {
+								this.handleService.handleAssetReleased(record);
 							} else if (record.method == DUMethod.LOG_INFO) {
 								this.handleService.handleLogInfo(record);
 							}
 						}
 						// addAvgReadPerRecord(System.currentTimeMillis() - start);
-						// publish record for further processing
 
 						start = System.currentTimeMillis();
-						// publishRecord(record);
 						// addAvgProcessPerRecord(System.currentTimeMillis() - start);
 
 						// clear buffer to start new entry
@@ -213,7 +209,6 @@ public class FileReader implements Runnable {
 	}
 
 	private DuLogRecord mapToRecord(List<String> lineBuffer) throws IOException, ClassNotFoundException {
-
 		String str = convert(lineBuffer);
 		// System.out.println(str);
 		ObjectInputStream in = xstream.createObjectInputStream(new ByteArrayInputStream(str.getBytes()));
@@ -229,6 +224,14 @@ public class FileReader implements Runnable {
 		return str;
 	}
 
+	/**
+	 * Cleans the given input from<br>
+	 * - invalid characters<br>
+	 * - dynamic properties in method call
+	 *
+	 * @param s
+	 * @return
+	 */
 	private String replaceString(String s) {
 		//@formatter:off
 		return s.replaceAll("&", "&amp;")

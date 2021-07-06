@@ -46,9 +46,9 @@ public class SoundService {
 	public void addToQueue(SoundConfig config) {
 		log.info("adding new queue {} {}", config.getFile(), soundQueue.stream().map(SoundConfig::getId).collect(Collectors.joining(",")));
 		removeId(config.getId());
-		log.info("queue size {}", soundQueue.size());
+		log.debug("queue size {}", soundQueue.size());
 		soundQueue.add(config);
-		log.info("queue size {}", soundQueue.size());
+		log.debug("queue size {}", soundQueue.size());
 		startQueue();
 	}
 
@@ -127,26 +127,30 @@ public class SoundService {
 	}
 
 	public void startQueue() {
-		log.info("starting queue {}", soundQueue.size());
+		log.debug("starting queue {}", soundQueue.size());
 		if (!enabled) {
-			log.info("disabled");
+			log.debug("disabled");
 			return;
 		}
 		if (queuePlayer != null && (queuePlayer.getStatus() == Status.PLAYING || queuePlayer.getStatus() == Status.PAUSED)) {
-			log.info("queue is already playing/paused");
+			log.debug("queue is already {}", queuePlayer.getStatus());
+			return;
+		}
+		if (queuePlayer != null && (queuePlayer.getStatus() == Status.UNKNOWN || queuePlayer.getStatus() == Status.READY)) {
+			log.debug("Status {}", queuePlayer.getStatus());
 			return;
 		}
 		if (soundQueue.isEmpty()) {
-			log.info("queue empty");
+			log.debug("queue empty");
 			return;
 		}
 		if (queuePlayer != null && queuePlayer.getStatus() != Status.DISPOSED) {
-			log.info("stoping old queue player");
+			log.debug("stoping old queue player status '{}'", queuePlayer.getStatus());
 			queuePlayer.stop();
 			return;
 		}
 
-		log.info("queue contains {} elements", soundQueue.size());
+		log.debug("queue contains {} elements", soundQueue.size());
 		SoundConfig config = soundQueue.poll();
 		double calcedVolume = baseVolume * (queueVolume / 100) * volumeFactor;
 		log.info("playing next sound in queue {} with volume {}", config.getFile().toString(), calcedVolume);
@@ -154,13 +158,14 @@ public class SoundService {
 		queuePlayer = new MediaPlayer(new Media(getRandomFile(config.getFile())));
 		queuePlayer.setVolume(calcedVolume);
 		queuePlayer.setOnEndOfMedia(() -> {
-			log.info("queueplayer end");
+			log.debug("queueplayer end");
 			queuePlayer.stop();
 		});
 		queuePlayer.setOnStopped(() -> {
-			log.info("queueplayer stoped");
+			log.debug("queueplayer stoped");
 			queuePlayer.dispose();
 			queuePlayer = null;
+			id2PlayerMap.remove(config.getId());
 			startQueue();
 		});
 		id2PlayerMap.put(config.getId(), queuePlayer);
@@ -169,6 +174,7 @@ public class SoundService {
 
 	String getRandomFile(File file) {
 		if (!file.canRead()) {
+			log.warn("File '{}' can't be read", file.getAbsolutePath());
 			return null;
 		}
 		if (file.isFile()) {
@@ -221,7 +227,7 @@ public class SoundService {
 	}
 
 	public void addNotification(SoundConfig config) {
-		log.info("adding new notification");
+		log.debug("adding new notification");
 		removeId(config.getId());
 		notificationQueue.add(config);
 		startNotification();
@@ -229,19 +235,24 @@ public class SoundService {
 
 	public void startNotification() {
 		if (!enabled) {
-			log.info("disabled");
+			log.debug("disabled");
 			return;
 		}
 		if (notificationPlayer != null && (notificationPlayer.getStatus() == Status.PLAYING || notificationPlayer.getStatus() == Status.PAUSED)) {
 			return;
 		}
 		if (notificationQueue.isEmpty()) {
-			log.info("notification queue empty");
+			log.debug("notification queue empty");
+			return;
+		}
+		if (notificationPlayer != null && (notificationPlayer.getStatus() == Status.UNKNOWN || notificationPlayer.getStatus() == Status.READY)) {
+			log.debug("Status {}", notificationPlayer.getStatus());
 			return;
 		}
 
 		if (notificationPlayer != null && notificationPlayer.getStatus() != Status.DISPOSED) {
 			notificationPlayer.stop();
+			return;
 		}
 
 		SoundConfig config = notificationQueue.poll();
@@ -255,11 +266,12 @@ public class SoundService {
 
 		});
 		notificationPlayer.setOnStopped(() -> {
-			log.info("notification stop");
+			log.debug("notification stop");
 			if (notificationPlayer != null) {
 				notificationPlayer.dispose();
 				notificationStop();
 				notificationPlayer = null;
+				id2PlayerMap.remove(config.getId());
 			}
 			startNotification();
 		});
@@ -270,14 +282,14 @@ public class SoundService {
 
 	public void startQueue(final MediaPlayer mediaPlayer, Queue<SoundConfig> queue, boolean isNotification) {
 		if (!enabled) {
-			log.info("disabled");
+			log.debug("disabled");
 			return;
 		}
 		if (mediaPlayer != null && mediaPlayer.getStatus() == Status.PLAYING) {
 			return;
 		}
 		if (queue.isEmpty()) {
-			log.info("queue empty");
+			log.debug("queue empty");
 			return;
 		}
 		if (!soundQueue.isEmpty() && (mediaPlayer == null || mediaPlayer.getStatus() == Status.STOPPED || mediaPlayer.getStatus() == Status.PAUSED || mediaPlayer.getStatus() == Status.HALTED || mediaPlayer.getStatus() == Status.DISPOSED)) {
@@ -298,16 +310,17 @@ public class SoundService {
 				newMediaPlayer.setVolume(baseVolume * queueVolume / 100 * volumeFactor);
 			}
 			newMediaPlayer.setOnEndOfMedia(() -> {
-				log.info("queue end");
+				log.debug("queue end");
 				newMediaPlayer.stop();
 				startQueue(mediaPlayer, queue, isNotification);
 			});
 			newMediaPlayer.setOnStopped(() -> {
-				log.info("queue stop");
+				log.debug("queue stop");
 				newMediaPlayer.dispose();
 				if (isNotification) {
 					notificationStop();
 				}
+				id2PlayerMap.remove(config.getId());
 			});
 			if (isNotification) {
 				notificationPlayer = newMediaPlayer;
@@ -320,11 +333,11 @@ public class SoundService {
 
 	public void playConcurrent(SoundConfig config, boolean loop) {
 		if (!enabled) {
-			log.info("disabled");
+			log.debug("disabled");
 			return;
 		}
 		double calcedVolume = baseVolume * concurrentVolume / 100 * volumeFactor;
-		log.info("play new concurrent {} with volume {}", config.getFile().toString(), calcedVolume);
+
 		if (id2PlayerMap.containsKey(config.getId())) {
 			if (loop) {
 				return;
@@ -332,6 +345,7 @@ public class SoundService {
 				removeId(config.getId());
 			}
 		}
+		log.info("play new concurrent {} with volume {}", config.getFile().toString(), calcedVolume);
 
 		MediaPlayer concurrentPlayer = new MediaPlayer(new Media(getRandomFile(config.getFile())));
 		concurrentPlayer.setVolume(calcedVolume);
@@ -358,21 +372,21 @@ public class SoundService {
 	}
 
 	private void removeId(String id) {
-		log.info("removing id '{}'", id);
+		log.debug("removing id '{}'", id);
 		Optional<SoundConfig> previousIdSound = soundQueue.stream().filter(sound -> sound.getId().equals(id)).findAny();
 		if (previousIdSound.isPresent()) {
-			log.info("removing from soundqueue, remaining size {}", soundQueue.size());
 			soundQueue.remove(previousIdSound.get());
+			log.debug("removing from soundqueue, remaining size {}", soundQueue.size());
 		}
 		Optional<SoundConfig> previousNotificationIdSound = notificationQueue.stream().filter(sound -> sound.getId().equals(id)).findAny();
 		if (previousNotificationIdSound.isPresent()) {
-			log.info("removing from notification queue, remaining size {}", notificationQueue.size());
 			notificationQueue.remove(previousNotificationIdSound.get());
+			log.debug("removing from notification queue, remaining size {}", notificationQueue.size());
 		}
 
 		MediaPlayer player = id2PlayerMap.get(id);
 		if (player != null && player.getStatus() != Status.DISPOSED) {
-			log.info("stoping concurrent sound");
+			log.debug("stoping concurrent sound");
 			id2PlayerMap.remove(id);
 			player.stop();
 		}

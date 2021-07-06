@@ -26,6 +26,7 @@ import com.google.gson.Gson;
 import bell.oauth.discord.main.OAuthBuilder;
 import de.tiramon.du.map.InstanceProvider;
 import de.tiramon.du.map.model.AssetInformation;
+import de.tiramon.du.map.model.ClaimType;
 import de.tiramon.du.map.model.Ore;
 
 public class DuMapService {
@@ -41,20 +42,20 @@ public class DuMapService {
 		log.info("DuMap activated");
 	}
 
-	public void sendClaimedTile(long celestialId, long tileId, long time) {
+	public void sendClaimedTile(long celestialId, long tileId, long time, ClaimType claimType) {
 
 		if (builder.getAccess_token() == null) {
 			log.info("no access token");
-			AssetInformation a = new AssetInformation(celestialId, tileId, time);
+			AssetInformation a = new AssetInformation(celestialId, tileId, time, claimType);
 
 			queue.add(a);
 		} else {
 			while (!queue.isEmpty()) {
 				AssetInformation a = queue.remove(0);
-				HttpPost post = createPost(a.getPlanetId(), a.getTileId(), a.getTime());
+				HttpPost post = createPost(a.getPlanetId(), a.getTileId(), a.getTime(), a.getType());
 				sendPost(post);
 			}
-			HttpPost post = createPost(celestialId, tileId, time);
+			HttpPost post = createPost(celestialId, tileId, time, claimType);
 			sendPost(post);
 		}
 	}
@@ -83,13 +84,14 @@ public class DuMapService {
 		return post;
 	}
 
-	private HttpPost createPost(long celestialId, long tileId, long time) {
+	private HttpPost createPost(long celestialId, long tileId, long time, ClaimType claimType) {
 		HttpPost post = new HttpPost(baseUrl + "/asset");
 		post.setHeader("Authorization", "Bearer " + builder.getAccess_token());
-		Map<String, Long> request = new HashMap<>();
+		Map<String, Object> request = new HashMap<>();
 		request.put("planetId", celestialId);
 		request.put("tileId", tileId);
 		request.put("time", time);
+		request.put("type", claimType.toString());
 		post.setEntity(new StringEntity(gson.toJson(request), ContentType.APPLICATION_JSON));
 		return post;
 	}
@@ -112,4 +114,5 @@ public class DuMapService {
 			throw new RuntimeException(e);
 		}
 	}
+
 }

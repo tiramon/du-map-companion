@@ -7,6 +7,7 @@ public enum DUMethod {
 	TERRITORYSCANNER_RESULT("NQ::Game::TerritoryScan::getResults"),
 	ASSET_CLAIM("NQ::Game::TerritoryManager::onTerritoryClaimed"),
 	ASSET_RIGHTS("NQ::RDMS::RightsCache<class NQ::Game::Territory>::requestRights::<lambda>::operator ()"),
+	ASSET_RELEASED("NQ::Game::TerritoryManager::onTerritoryReleased"),
 	LOG_INFO("NQ::DP::System::logInfo");
 	//@formatter:on
 

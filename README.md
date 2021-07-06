@@ -1,3 +1,5 @@
+[![Java CI with Maven](https://github.com/tiramon/du-map-companion/actions/workflows/maven.yml/badge.svg)](https://github.com/tiramon/du-map-companion/actions/workflows/maven.yml)
+
 # DuMapCompanion
 
 ## Table of contents

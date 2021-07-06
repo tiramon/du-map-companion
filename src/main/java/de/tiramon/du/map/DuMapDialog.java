@@ -318,7 +318,7 @@ public class DuMapDialog extends Application {
 
 			pane.getChildren().add(updateBox);
 		} else {
-			log.info("Version is alread up to date");
+			log.info("Version is already up to date");
 		}
 
 		pane.getChildren().add(logfileLabel);
