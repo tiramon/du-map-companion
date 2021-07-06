@@ -1,14 +1,15 @@
 package de.tiramon.du.map.utils;
 
-import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 
-import de.tiramon.du.map.model.DUMethod;
+import de.tiramon.du.map.model.DUMethodDuMap;
+import de.tiramon.du.tools.model.DUMethod;
+import de.tiramon.du.tools.service.IMethodEnumConverter;
 
-public class MethodEnumConverter implements Converter {
+public class MethodEnumConverter extends IMethodEnumConverter {
 	private static MethodEnumConverter instance = new MethodEnumConverter();
 
 	public static MethodEnumConverter getInstance() {
@@ -29,7 +30,15 @@ public class MethodEnumConverter implements Converter {
 
 	@Override
 	public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
-		return DUMethod.get(reader.getValue());
+		String value = reader.getValue();
+
+		DUMethod[] a = DUMethodDuMap.values();
+		for (int i = 0; i < a.length; i++) {
+			if (a[i].getMethodString().equals(value)) {
+				return a[i];
+			}
+		}
+		return null;
 	}
 
 }

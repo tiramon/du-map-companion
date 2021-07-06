@@ -1,1 +1,0 @@
-package de.tiramon.du.map.thread;

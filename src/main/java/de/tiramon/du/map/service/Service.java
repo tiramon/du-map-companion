@@ -2,6 +2,7 @@ package de.tiramon.du.map.service;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ import com.sun.javafx.collections.ObservableListWrapper;
 import de.tiramon.du.map.DuMapDialog;
 import de.tiramon.du.map.InstanceProvider;
 import de.tiramon.du.map.model.ClaimType;
-import de.tiramon.du.map.model.DuLogRecord;
+import de.tiramon.du.map.model.DUMethodDuMap;
 import de.tiramon.du.map.model.Ore;
 import de.tiramon.du.map.model.Scan;
 import de.tiramon.du.map.model.Scanner;
@@ -29,16 +30,24 @@ import de.tiramon.du.map.model.Sound;
 import de.tiramon.du.map.model.User;
 import de.tiramon.du.map.sound.SoundCommand;
 import de.tiramon.du.map.sound.SoundConfig;
+import de.tiramon.du.tools.model.DuLogRecord;
+import de.tiramon.du.tools.service.IHandleService;
 import javafx.application.Platform;
 import javafx.beans.Observable;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 
-public class Service {
+public class Service implements IHandleService {
 	protected Logger log = LoggerFactory.getLogger(getClass());
 
 	private SoundService soundService = InstanceProvider.getSoundService();
@@ -79,6 +88,11 @@ public class Service {
 	private ConcurrentHashMap<Long, Scanner> scannerMap = new ConcurrentHashMap<>();
 	private ObservableList<Scanner> list = FXCollections.observableList(new CopyOnWriteArrayList<>(), item -> new Observable[] { item.timeLeftProperty(), item.positionProperty(), item.stateProperty() });
 
+	private StringProperty currentLogfileName = new SimpleStringProperty("No logfile found");
+	private BooleanProperty isInitializedProperty = new SimpleBooleanProperty(false);
+	private BooleanProperty isWorkingProperty = new SimpleBooleanProperty(false);
+	private LongProperty lastEntryReadProperty = new SimpleLongProperty(0);
+
 	public Service() {
 		initSound();
 	}
@@ -96,6 +110,26 @@ public class Service {
 				currentSoundProperty.set(sound);
 			}
 		}
+	}
+
+	@Override
+	public void handle(DuLogRecord record) {
+		if (record.method == DUMethodDuMap.ASSET_CLAIM) {
+			this.handleAsset(record);
+		} else if (record.method == DUMethodDuMap.TERRITORYSCANNER_STATUSCHANGE) {
+			this.handleScanStatusChange(record);
+		} else if (record.method == DUMethodDuMap.TERRITORYSCANNER_RESULT) {
+			this.handleScanOre(record);
+		} else if (record.method == DUMethodDuMap.TERRITORYSCANNER_POSITION) {
+			this.handleScanPosition(record);
+		} else if (record.method == DUMethodDuMap.ASSET_RIGHTS) {
+			this.handleAssetRights(record);
+		} else if (record.method == DUMethodDuMap.ASSET_RELEASED) {
+			this.handleAssetReleased(record);
+		} else if (record.method == DUMethodDuMap.LOG_INFO) {
+			this.handleLogInfo(record);
+		}
+
 	}
 
 	public void handleAsset(DuLogRecord record) {
@@ -307,4 +341,41 @@ public class Service {
 			int bp = 0;
 		}
 	}
+
+	@Override
+	public void setCurrentLogfileName(Path newLogFile) {
+		Platform.runLater(() -> currentLogfileName.set(newLogFile.toString()));
+	}
+
+	@Override
+	public void setInitialized(final boolean b) {
+		Platform.runLater(() -> isInitializedProperty.set(b));
+	}
+
+	@Override
+	public void setWorking(final boolean b) {
+		Platform.runLater(() -> isWorkingProperty.set(b));
+	}
+
+	@Override
+	public void setLastEntryRead(final long timestamp) {
+		Platform.runLater(() -> lastEntryReadProperty.set(timestamp));
+	}
+
+	public BooleanProperty workingProperty() {
+		return isWorkingProperty;
+	}
+
+	public BooleanProperty initializedProperty() {
+		return isInitializedProperty;
+	}
+
+	public StringProperty currentLogfileNameProperty() {
+		return currentLogfileName;
+	}
+
+	public LongProperty lastEntryReadProperty() {
+		return lastEntryReadProperty;
+	}
+
 }
