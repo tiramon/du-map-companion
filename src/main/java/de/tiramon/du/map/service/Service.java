@@ -2,6 +2,7 @@ package de.tiramon.du.map.service;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ import com.sun.javafx.collections.ObservableListWrapper;
 import de.tiramon.du.map.DuMapDialog;
 import de.tiramon.du.map.InstanceProvider;
 import de.tiramon.du.map.model.ClaimType;
-import de.tiramon.du.map.model.DuLogRecord;
+import de.tiramon.du.map.model.DUMethodsMap;
 import de.tiramon.du.map.model.Ore;
 import de.tiramon.du.map.model.Scan;
 import de.tiramon.du.map.model.Scanner;
@@ -29,17 +30,31 @@ import de.tiramon.du.map.model.Sound;
 import de.tiramon.du.map.model.User;
 import de.tiramon.du.map.sound.SoundCommand;
 import de.tiramon.du.map.sound.SoundConfig;
+import de.tiramon.du.tools.model.DuLogRecord;
+import de.tiramon.du.tools.service.IHandleService;
 import javafx.application.Platform;
 import javafx.beans.Observable;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 
-public class Service {
+public class Service implements IHandleService {
 	protected Logger log = LoggerFactory.getLogger(getClass());
+
+	private StringProperty currentLogfileName = new SimpleStringProperty();
+	private BooleanProperty isInitializedProperty = new SimpleBooleanProperty();
+	private BooleanProperty isWorkingProperty = new SimpleBooleanProperty();
+	private LongProperty lastEntryReadProperty = new SimpleLongProperty();
+	private LongProperty backlogCountProperty = new SimpleLongProperty();
 
 	private SoundService soundService = InstanceProvider.getSoundService();
 	private String soundSetting = InstanceProvider.getProperties().getProperty("territoryscan.sound");
@@ -293,7 +308,7 @@ public class Service {
 		}
 
 	}
-	
+
 	public void handleAssetReleased(DuLogRecord record) {
 		Matcher matcher = assetReleased.matcher(record.message);
 		if (matcher.matches()) {
@@ -305,6 +320,70 @@ public class Service {
 
 		} else {
 			int bp = 0;
+		}
+	}
+
+	@Override
+	public void setCurrentLogfileName(Path newLogFile) {
+		Platform.runLater(() -> currentLogfileName.set(newLogFile.toString()));
+	}
+
+	@Override
+	public void setInitialized(final boolean b) {
+		Platform.runLater(() -> isInitializedProperty.set(b));
+	}
+
+	@Override
+	public void setWorking(final boolean b) {
+		Platform.runLater(() -> isWorkingProperty.set(b));
+	}
+
+	@Override
+	public void setLastEntryRead(final long timestamp) {
+		Platform.runLater(() -> lastEntryReadProperty.set(timestamp));
+	}
+
+	@Override
+	public void setBacklogCount(final long count) {
+		Platform.runLater(() -> backlogCountProperty.set(count));
+	}
+
+	public BooleanProperty workingProperty() {
+		return isWorkingProperty;
+	}
+
+	public BooleanProperty initializedProperty() {
+		return isInitializedProperty;
+	}
+
+	public StringProperty currentLogfileNameProperty() {
+		return currentLogfileName;
+	}
+
+	public LongProperty lastEntryReadProperty() {
+		return lastEntryReadProperty;
+	}
+
+	public LongProperty backlogCountProperty() {
+		return backlogCountProperty;
+	}
+
+	@Override
+	public void handle(de.tiramon.du.tools.model.DuLogRecord record) {
+		if (record.method.equals(DUMethodsMap.ASSET_CLAIM)) {
+			handleAsset(record);
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_STATUSCHANGE)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESULT)) {
+			handleScanOre(record);
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_POSITION)) {
+			handleScanPosition(record);
+		} else if (record.method.equals(DUMethodsMap.ASSET_RIGHTS)) {
+			handleAssetRights(record);
+		} else if (record.method.equals(DUMethodsMap.ASSET_RELEASED)) {
+			handleAssetReleased(record);
+		} else if (record.method.equals(DUMethodsMap.LOG_INFO)) {
+			handleLogInfo(record);
 		}
 	}
 }

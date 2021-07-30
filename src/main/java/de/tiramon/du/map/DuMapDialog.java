@@ -1,7 +1,6 @@
 package de.tiramon.du.map;
 
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -15,13 +14,12 @@ import de.tiramon.du.map.model.Scanner.ScannerState;
 import de.tiramon.du.map.model.Sound;
 import de.tiramon.du.map.service.Service;
 import de.tiramon.du.map.service.SoundService;
-import de.tiramon.du.map.thread.FileReader;
-import de.tiramon.du.map.thread.NewFileWatcher;
-import de.tiramon.du.map.update.UpdateService;
+import de.tiramon.du.map.utils.MethodEnumConverter;
+import de.tiramon.du.tools.thread.ThreadInitializer;
+import de.tiramon.github.update.service.UpdateService;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -54,12 +52,6 @@ public class DuMapDialog extends Application {
 	private Service service = InstanceProvider.getService();
 	private SoundService soundService = InstanceProvider.getSoundService();
 	private UpdateService updateService = InstanceProvider.getUpdateService();
-
-	private Thread fileReaderThread;
-	private Thread fileWatcherThread;
-
-	private NewFileWatcher newFileWatcher;
-	private FileReader fileReader;
 
 	public static boolean init = false;
 
@@ -106,41 +98,26 @@ public class DuMapDialog extends Application {
 
 	@Override
 	public void stop() throws Exception {
-		if (newFileWatcher != null) {
-			newFileWatcher.stop();
-		}
-		if (fileReader != null) {
-			fileReader.stop();
-		}
+		ThreadInitializer.stopThreads();
 		super.stop();
 		Platform.exit();
 		System.exit(0);
 	}
 
 	private void loginDone(Stage primaryStage) {
+		ThreadInitializer.initThreads(service, new MethodEnumConverter(), InstanceProvider.getProperties());
+
 		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy HH:mm:ss z");
 		Label logfileLabel = new Label("No logfile found");
 		logfileLabel.setPrefWidth(600);
-
-		fileReader = new FileReader();
-
-		newFileWatcher = new NewFileWatcher(fileReader.getQueue());
-		ReadOnlyObjectProperty<Path> currentLogfileProperty = newFileWatcher.getCurrentLogFileProperty();
-		currentLogfileProperty.addListener((ObservableValue<? extends Path> observable, Path oldValue, Path newValue) -> {
-			// TODO Auto-generated method stub
-			Platform.runLater(() -> logfileLabel.setText(newValue.toString()));
+		service.currentLogfileNameProperty().addListener((ObservableValue<? extends String> observable, String oldValue, String newValue) -> {
+			Platform.runLater(() -> logfileLabel.setText(newValue));
 		});
 
-		fileReaderThread = new Thread(fileReader, "FileReader");
-		fileReaderThread.start();
-		try {
-			Thread.sleep(100);
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		}
-		fileWatcherThread = new Thread(newFileWatcher, "FileWatcher");
-
-		fileWatcherThread.start();
+		Label backlogLabel = new Label("Most recent Logfile");
+		service.backlogCountProperty().addListener((ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
+			Platform.runLater(() -> backlogLabel.setText(newValue.longValue() > 0 ? newValue + " newer logfiles" : "Most recent logfile"));
+		});
 
 		VBox pane = new VBox(10);
 
@@ -158,8 +135,8 @@ public class DuMapDialog extends Application {
 		hbox.getChildren().add(new Label("Last entry read:"));
 		Label lastEntryReadLabel = new Label();
 		lastEntryReadLabel.textProperty().bind(Bindings.createStringBinding(() -> {
-			return sdf.format(new Date(fileReader.getLastEntryReadProperty().get()));
-		}, fileReader.getLastEntryReadProperty()));
+			return sdf.format(new Date(service.lastEntryReadProperty().get()));
+		}, service.lastEntryReadProperty()));
 		hbox.getChildren().add(lastEntryReadLabel);
 
 		hbox.getChildren().add(new Label("Idle:"));
@@ -172,10 +149,10 @@ public class DuMapDialog extends Application {
 		working.setCenterX(radius + stroke);
 		working.setCenterY(radius + stroke);
 
-		working.setStroke(fileReader.isWorkingProperty().get() ? Color.DARKGREEN : Color.ORANGE);
-		working.setFill(fileReader.isWorkingProperty().get() ? Color.GREEN : Color.YELLOW);
+		working.setStroke(service.workingProperty().get() ? Color.DARKGREEN : Color.ORANGE);
+		working.setFill(service.workingProperty().get() ? Color.GREEN : Color.YELLOW);
 		Group workingGroup = new Group(working);
-		fileReader.isWorkingProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
+		service.workingProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 			working.setFill(newValue ? Color.YELLOW : Color.GREEN);
 			working.setStroke(newValue ? Color.ORANGE : Color.DARKGREEN);
 		});
@@ -322,6 +299,7 @@ public class DuMapDialog extends Application {
 		}
 
 		pane.getChildren().add(logfileLabel);
+		pane.getChildren().add(backlogLabel);
 		pane.getChildren().add(hbox);
 		VBox.setVgrow(scannerList, Priority.ALWAYS);
 		pane.getChildren().add(scannerList);
