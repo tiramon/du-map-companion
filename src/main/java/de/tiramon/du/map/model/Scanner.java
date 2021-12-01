@@ -64,13 +64,12 @@ public class Scanner {
 		} else {
 			timer.cancel();
 		}
-		if (state == ScannerState.FINISHED && position == null) {
-			this.state = ScannerState.RESETED;
-			this.stateProperty.set(ScannerState.RESETED);
-		} else {
-			this.state = state;
-			this.stateProperty.set(state);
-		}
+		/*
+		 * FIXME if (state == ScannerState.FINISHED && position == null) { this.state = ScannerState.RESETED; this.stateProperty.set(ScannerState.RESETED); } else {
+		 */
+		this.state = state;
+		this.stateProperty.set(state);
+		// }
 	}
 
 	public void setTimestampStarte(long timestamp) {

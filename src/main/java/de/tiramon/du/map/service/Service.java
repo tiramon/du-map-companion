@@ -66,7 +66,7 @@ public class Service implements IHandleService {
 	private Pattern assetReleased = Pattern.compile("onTerritoryReleased\\(planet=(?<planetId>\\d+), tile=(?<tileId>\\d+)\\)");
 	private Pattern userPattern = Pattern.compile("LoginResponse:\\[playerId = (?<playerId>\\d+), username = (?<playerName>.+?), communityId = (?<communityId>\\d+), ip = [\\d+\\.\\|]+, timeSeconds = @\\((?<loginTimestamp>\\d+)\\) \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]");
 
-	private Pattern scanner_start = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Start -- id (?<scannerid>\\d+)");
+	private Pattern scanner_start = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\] starts");
 	private Pattern scanner_stop = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Stop -- id (?<scannerid>\\d+)");
 	private Pattern scanner_result_position = Pattern.compile("TerritoryScan\\[\\d+#(?<scannerid>\\d+)\\] end: lasted (\\d+\\.\\d+) seconds coordinates: (?<position>::pos\\{\\d+,\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+})");
 	private Pattern scanner_reset = Pattern.compile("Coroutine \\d+\\(TerritoryScan_(?<constructid>\\d+)#(?<scannerid>\\d+)\\) killed");
@@ -154,28 +154,24 @@ public class Service implements IHandleService {
 				int bp = 0;
 			}
 		}
-		{
-			Matcher matcher = scanner_stop.matcher(record.message);
-			if (matcher.matches()) {
-				long scannerid = Long.valueOf(matcher.group("scannerid"));
-				scannerMap.get(scannerid).setState(ScannerState.FINISHED, record.millis);
-				log.info("Scanner " + scannerid + " finished");
-				scannerMap.get(scannerid).setSubmited(false);
-				playSound();
-				return;
-			} else {
-				int bp = 0;
-			}
-		}
+
+		/*
+		 * {// TODO remove Matcher matcher = scanner_stop.matcher(record.message); if (matcher.matches()) { long scannerid = Long.valueOf(matcher.group("scannerid")); scannerMap.get(scannerid).setState(ScannerState.FINISHED, record.millis); log.info("Scanner " + scannerid + " finished"); scannerMap.get(scannerid).setSubmited(false); playSound(); return; } else { int bp = 0; } }
+		 */
 	}
 
 	public void handleScanPosition(DuLogRecord record) {
 		Matcher matcher = scanner_result_position.matcher(record.message);
 		if (matcher.matches()) {
 			long scannerid = Long.valueOf(matcher.group("scannerid"));
+
 			String position = matcher.group("position").replace("-0.0000", "0.0000");
 			Scanner scanner = scannerMap.get(scannerid);
+
+			scanner.setState(ScannerState.FINISHED, record.millis);
+			scanner.setSubmited(false);
 			scanner.setPosition(position);
+			playSound();
 			Scan scan = new Scan(position, record.millis);
 
 			log.info("Scanner " + scannerid + " at postion " + position);
@@ -340,6 +336,7 @@ public class Service implements IHandleService {
 
 	@Override
 	public void setInitialized(final boolean b) {
+		DuMapDialog.init = true;
 		Platform.runLater(() -> isInitializedProperty.set(b));
 	}
 
@@ -383,6 +380,8 @@ public class Service implements IHandleService {
 		if (record.method.equals(DUMethodsMap.ASSET_CLAIM)) {
 			handleAsset(record);
 		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_STATUSCHANGE)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_STATUSSTART)) {
 			handleScanStatusChange(record);
 		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESULT)) {
 			handleScanOre(record);

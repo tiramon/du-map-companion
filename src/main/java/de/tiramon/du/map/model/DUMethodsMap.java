@@ -5,6 +5,7 @@ import de.tiramon.du.tools.model.DUMethod;
 public enum DUMethodsMap implements DUMethod {
 	//@formatter:off
 	TERRITORYSCANNER_STATUSCHANGE("NQ::Game::AssetEventsElementHub::soundActionPostEvent"),
+	TERRITORYSCANNER_STATUSSTART("NQ::Game::TerritoryScan::launchScan"),
 	TERRITORYSCANNER_POSITION("NQ::Game::TerritoryScan::initHFSM::<lambda>::operator ()"),
 	TERRITORYSCANNER_RESULT("NQ::Game::TerritoryScan::getResults"),
 	TERRITORYSCANNER_RESET("NQ::Coroutine::Handle::kill"),
