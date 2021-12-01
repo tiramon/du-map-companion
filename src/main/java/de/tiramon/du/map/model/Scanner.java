@@ -34,7 +34,7 @@ public class Scanner {
 	}
 
 	public enum ScannerState {
-		STARTED, FINISHED, RESULT, UNKNOWN, RESETED, SUBMITED
+		STARTED, FINISHED, RESULT, UNKNOWN, RESETED, SUBMITED, SAVED
 	}
 
 	public void setState(ScannerState state, long timestampStateChange) {

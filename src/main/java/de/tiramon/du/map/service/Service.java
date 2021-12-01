@@ -71,7 +71,7 @@ public class Service implements IHandleService {
 	private Pattern scanner_result_position = Pattern.compile("TerritoryScan\\[\\d+#(?<scannerid>\\d+)\\] end: lasted (\\d+\\.\\d+) seconds coordinates: (?<position>::pos\\{\\d+,\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+})");
 	private Pattern scanner_reset = Pattern.compile("Coroutine \\d+\\(TerritoryScan_(?<constructid>\\d+)#(?<scannerid>\\d+)\\) killed");
 	private Pattern scanOrePattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: material: (?<oreName>[A-Za-z ]+) : (?<oreAmount>[\\de+\\.]+) \\* \\d+");
-
+	private Pattern scanSavedPattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: results saved \\[item:\\d+\\|\\d+\\]");
 	/*
 	 * sound_play|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Plays a concurrent sound sound_notification|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Lowers volume on all other sounds for its duration, and plays overtop sound_q|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Plays a sound after all other queued sounds finish
 	 *
@@ -136,7 +136,17 @@ public class Service implements IHandleService {
 				return;
 			}
 			return;
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_SAVED)) {
+			Matcher matcher = scanSavedPattern.matcher(record.message);
+			if (matcher.matches()) {
+				long scannerid = Long.valueOf(matcher.group("scannerid"));
+				scannerMap.get(scannerid).setState(ScannerState.SAVED, record.millis);
+				log.info("Scanner " + scannerid + " result saved");
+				return;
+			}
+			return;
 		}
+
 		{
 			Matcher matcher = scanner_start.matcher(record.message);
 			if (matcher.matches()) {
@@ -388,6 +398,8 @@ public class Service implements IHandleService {
 		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_POSITION)) {
 			handleScanPosition(record);
 		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESET)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_SAVED)) {
 			handleScanStatusChange(record);
 		} else if (record.method.equals(DUMethodsMap.ASSET_RIGHTS)) {
 			handleAssetRights(record);
