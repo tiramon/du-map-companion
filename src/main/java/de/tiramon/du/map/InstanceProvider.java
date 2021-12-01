@@ -67,7 +67,7 @@ public class InstanceProvider {
 				User user = builder.getUser();
 			} catch (JSONException e) {
 				builder.setAccess_token(null);
-				log.info("Could not use autologin '{}'", accessToken);
+				log.info("Could not use autologin '{}' {}", accessToken, e.getMessage());
 			}
 
 		}
