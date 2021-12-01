@@ -62,7 +62,8 @@ If you have problems with starting the application you should try the command li
 ## How to use the application
 
 As long as the application is running it will always look for the newest log file in your DU log folder. You have to do nothing special, just use your Territory Scanners as usual.
-~~The results will be transfered to the website as soon as you click the ingame save button of your scanner result. ~~ Currently deactivated because NQ removed relevant data from the logs.
+
+Automatic upload is currently deactivated because NQ removed relevant data from the logs.
 
 ## How to use the integrated sound framework
 
