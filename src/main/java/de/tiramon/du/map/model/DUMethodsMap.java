@@ -7,6 +7,7 @@ public enum DUMethodsMap implements DUMethod {
 	TERRITORYSCANNER_STATUSCHANGE("NQ::Game::AssetEventsElementHub::soundActionPostEvent"),
 	TERRITORYSCANNER_POSITION("NQ::Game::TerritoryScan::initHFSM::<lambda>::operator ()"),
 	TERRITORYSCANNER_RESULT("NQ::Game::TerritoryScan::getResults"),
+	TERRITORYSCANNER_RESET("NQ::Coroutine::Handle::kill"),
 	ASSET_CLAIM("NQ::Game::TerritoryManager::onTerritoryClaimed"),
 	ASSET_RIGHTS("NQ::RDMS::RightsCache<class NQ::Game::Territory>::requestRights::<lambda>::operator ()"),
 	ASSET_RELEASED("NQ::Game::TerritoryManager::onTerritoryReleased"),

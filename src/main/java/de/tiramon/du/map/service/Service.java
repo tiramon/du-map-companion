@@ -69,7 +69,7 @@ public class Service implements IHandleService {
 	private Pattern scanner_start = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Start -- id (?<scannerid>\\d+)");
 	private Pattern scanner_stop = Pattern.compile("AssetEvent: Played sound event Construct_Element_TerritoryScanner_Stop -- id (?<scannerid>\\d+)");
 	private Pattern scanner_result_position = Pattern.compile("TerritoryScan\\[\\d+#(?<scannerid>\\d+)\\] end: lasted (\\d+\\.\\d+) seconds coordinates: (?<position>::pos\\{\\d+,\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+,-?\\d+\\.\\d+})");
-
+	private Pattern scanner_reset = Pattern.compile("Coroutine \\d+\\(TerritoryScan_(?<constructid>\\d+)#(?<scannerid>\\d+)\\) killed");
 	private Pattern scanOrePattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: material: (?<oreName>[A-Za-z ]+) : (?<oreAmount>[\\de+\\.]+) \\* \\d+");
 
 	/*
@@ -127,6 +127,16 @@ public class Service implements IHandleService {
 	}
 
 	public void handleScanStatusChange(DuLogRecord record) {
+		if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESET)) {
+			Matcher matcher = scanner_reset.matcher(record.message);
+			if (matcher.matches()) {
+				long scannerid = Long.valueOf(matcher.group("scannerid"));
+				scannerMap.get(scannerid).setState(ScannerState.RESETED, record.millis);
+				log.info("Scanner " + scannerid + " reseted");
+				return;
+			}
+			return;
+		}
 		{
 			Matcher matcher = scanner_start.matcher(record.message);
 			if (matcher.matches()) {
@@ -378,6 +388,8 @@ public class Service implements IHandleService {
 			handleScanOre(record);
 		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_POSITION)) {
 			handleScanPosition(record);
+		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESET)) {
+			handleScanStatusChange(record);
 		} else if (record.method.equals(DUMethodsMap.ASSET_RIGHTS)) {
 			handleAssetRights(record);
 		} else if (record.method.equals(DUMethodsMap.ASSET_RELEASED)) {
