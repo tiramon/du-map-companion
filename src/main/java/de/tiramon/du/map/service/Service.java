@@ -131,6 +131,7 @@ public class Service implements IHandleService {
 			Matcher matcher = scanner_reset.matcher(record.message);
 			if (matcher.matches()) {
 				long scannerid = Long.valueOf(matcher.group("scannerid"));
+				addScannerIfNeeded(scannerid);
 				scannerMap.get(scannerid).setState(ScannerState.RESETED, record.millis);
 				log.info("Scanner " + scannerid + " reseted");
 				return;
@@ -140,6 +141,7 @@ public class Service implements IHandleService {
 			Matcher matcher = scanSavedPattern.matcher(record.message);
 			if (matcher.matches()) {
 				long scannerid = Long.valueOf(matcher.group("scannerid"));
+				addScannerIfNeeded(scannerid);
 				scannerMap.get(scannerid).setState(ScannerState.SAVED, record.millis);
 				log.info("Scanner " + scannerid + " result saved");
 				return;
@@ -151,11 +153,7 @@ public class Service implements IHandleService {
 			Matcher matcher = scanner_start.matcher(record.message);
 			if (matcher.matches()) {
 				long scannerid = Long.valueOf(matcher.group("scannerid"));
-				Scanner scanner = new Scanner(scannerid);
-				if (scannerMap.putIfAbsent(scannerid, scanner) == null) {
-					log.info("new scanner {}", scannerid);
-					list.add(scanner);
-				}
+				addScannerIfNeeded(scannerid);
 				scannerMap.get(scannerid).setState(ScannerState.STARTED, record.millis);
 				scannerMap.get(scannerid).setSubmited(false);
 				log.info("Scanner " + scannerid + " started");
@@ -170,11 +168,19 @@ public class Service implements IHandleService {
 		 */
 	}
 
+	public void addScannerIfNeeded(long scannerid) {
+		if (!scannerMap.containsKey(scannerid)) {
+			scannerMap.put(scannerid, new Scanner(scannerid));
+			log.info("new scanner {}", scannerid);
+			list.add(scannerMap.get(scannerid));
+		}
+	}
+
 	public void handleScanPosition(DuLogRecord record) {
 		Matcher matcher = scanner_result_position.matcher(record.message);
 		if (matcher.matches()) {
 			long scannerid = Long.valueOf(matcher.group("scannerid"));
-
+			addScannerIfNeeded(scannerid);
 			String position = matcher.group("position").replace("-0.0000", "0.0000");
 			Scanner scanner = scannerMap.get(scannerid);
 
@@ -195,7 +201,7 @@ public class Service implements IHandleService {
 		Matcher matcher = scanOrePattern.matcher(record.message);
 		if (matcher.find()) {
 			final long scannerId = Long.parseLong(matcher.group("scannerid"));
-
+			addScannerIfNeeded(scannerId);
 			Ore ore = Ore.byName(matcher.group("oreName"));
 			long oreAmount = Double.valueOf(matcher.group("oreAmount")).longValue();
 			Scan scan = currentScans.get(scannerId);
