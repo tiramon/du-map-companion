@@ -4,3 +4,4 @@ target
 .project
 application.properties
 audiopacks
+*.jar
