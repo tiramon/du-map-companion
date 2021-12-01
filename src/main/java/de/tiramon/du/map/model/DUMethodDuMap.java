@@ -2,7 +2,7 @@ package de.tiramon.du.map.model;
 
 import de.tiramon.du.tools.model.DUMethod;
 
-public enum DUMethodsMap implements DUMethod {
+public enum DUMethodDuMap implements DUMethod {
 	//@formatter:off
 	TERRITORYSCANNER_STATUSCHANGE("NQ::Game::AssetEventsElementHub::soundActionPostEvent"),
 	TERRITORYSCANNER_STATUSSTART("NQ::Game::TerritoryScan::launchScan"),
@@ -16,7 +16,7 @@ public enum DUMethodsMap implements DUMethod {
 	LOG_INFO("NQ::DP::System::logInfo");
 	//@formatter:on
 
-	private DUMethodsMap(String dumethod) {
+	private DUMethodDuMap(String dumethod) {
 		this.dumethodString = dumethod;
 	}
 

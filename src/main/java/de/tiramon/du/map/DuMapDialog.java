@@ -149,8 +149,8 @@ public class DuMapDialog extends Application {
 		working.setCenterX(radius + stroke);
 		working.setCenterY(radius + stroke);
 
-		working.setStroke(service.workingProperty().get() ? Color.DARKGREEN : Color.ORANGE);
-		working.setFill(service.workingProperty().get() ? Color.GREEN : Color.YELLOW);
+		working.setStroke(service.workingProperty().get() ? Color.ORANGE : Color.DARKGREEN);
+		working.setFill(service.workingProperty().get() ? Color.YELLOW : Color.GREEN);
 		Group workingGroup = new Group(working);
 		service.workingProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 			working.setFill(newValue ? Color.YELLOW : Color.GREEN);

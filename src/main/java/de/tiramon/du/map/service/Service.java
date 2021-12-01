@@ -21,7 +21,7 @@ import com.sun.javafx.collections.ObservableListWrapper;
 import de.tiramon.du.map.DuMapDialog;
 import de.tiramon.du.map.InstanceProvider;
 import de.tiramon.du.map.model.ClaimType;
-import de.tiramon.du.map.model.DUMethodsMap;
+import de.tiramon.du.map.model.DUMethodDuMap;
 import de.tiramon.du.map.model.Ore;
 import de.tiramon.du.map.model.Scan;
 import de.tiramon.du.map.model.Scanner;
@@ -49,12 +49,6 @@ import javafx.scene.media.MediaPlayer;
 
 public class Service implements IHandleService {
 	protected Logger log = LoggerFactory.getLogger(getClass());
-
-	private StringProperty currentLogfileName = new SimpleStringProperty();
-	private BooleanProperty isInitializedProperty = new SimpleBooleanProperty();
-	private BooleanProperty isWorkingProperty = new SimpleBooleanProperty();
-	private LongProperty lastEntryReadProperty = new SimpleLongProperty();
-	private LongProperty backlogCountProperty = new SimpleLongProperty();
 
 	private SoundService soundService = InstanceProvider.getSoundService();
 	private String soundSetting = InstanceProvider.getProperties().getProperty("territoryscan.sound");
@@ -94,6 +88,12 @@ public class Service implements IHandleService {
 	private ConcurrentHashMap<Long, Scanner> scannerMap = new ConcurrentHashMap<>();
 	private ObservableList<Scanner> list = FXCollections.observableList(new CopyOnWriteArrayList<>(), item -> new Observable[] { item.timeLeftProperty(), item.positionProperty(), item.stateProperty() });
 
+	private StringProperty currentLogfileName = new SimpleStringProperty("No logfile found");
+	private BooleanProperty isInitializedProperty = new SimpleBooleanProperty(false);
+	private BooleanProperty isWorkingProperty = new SimpleBooleanProperty(false);
+	private LongProperty lastEntryReadProperty = new SimpleLongProperty(0);
+	private LongProperty backlogCountProperty = new SimpleLongProperty();
+
 	public Service() {
 		initSound();
 	}
@@ -113,6 +113,31 @@ public class Service implements IHandleService {
 		}
 	}
 
+	@Override
+	public void handle(DuLogRecord record) {
+		if (record.method.equals(DUMethodDuMap.ASSET_CLAIM)) {
+			handleAsset(record);
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSCHANGE)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSSTART)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESULT)) {
+			handleScanOre(record);
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_POSITION)) {
+			handleScanPosition(record);
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESET)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_SAVED)) {
+			handleScanStatusChange(record);
+		} else if (record.method.equals(DUMethodDuMap.ASSET_RIGHTS)) {
+			handleAssetRights(record);
+		} else if (record.method.equals(DUMethodDuMap.ASSET_RELEASED)) {
+			handleAssetReleased(record);
+		} else if (record.method.equals(DUMethodDuMap.LOG_INFO)) {
+			handleLogInfo(record);
+		}
+	}
+
 	public void handleAsset(DuLogRecord record) {
 		Matcher matcher = asset.matcher(record.message);
 		if (matcher.matches()) {
@@ -127,7 +152,7 @@ public class Service implements IHandleService {
 	}
 
 	public void handleScanStatusChange(DuLogRecord record) {
-		if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESET)) {
+		if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESET)) {
 			Matcher matcher = scanner_reset.matcher(record.message);
 			if (matcher.matches()) {
 				long scannerid = Long.valueOf(matcher.group("scannerid"));
@@ -137,7 +162,7 @@ public class Service implements IHandleService {
 				return;
 			}
 			return;
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_SAVED)) {
+		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_SAVED)) {
 			Matcher matcher = scanSavedPattern.matcher(record.message);
 			if (matcher.matches()) {
 				long scannerid = Long.valueOf(matcher.group("scannerid"));
@@ -391,28 +416,4 @@ public class Service implements IHandleService {
 		return backlogCountProperty;
 	}
 
-	@Override
-	public void handle(de.tiramon.du.tools.model.DuLogRecord record) {
-		if (record.method.equals(DUMethodsMap.ASSET_CLAIM)) {
-			handleAsset(record);
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_STATUSCHANGE)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_STATUSSTART)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESULT)) {
-			handleScanOre(record);
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_POSITION)) {
-			handleScanPosition(record);
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_RESET)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodsMap.TERRITORYSCANNER_SAVED)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodsMap.ASSET_RIGHTS)) {
-			handleAssetRights(record);
-		} else if (record.method.equals(DUMethodsMap.ASSET_RELEASED)) {
-			handleAssetReleased(record);
-		} else if (record.method.equals(DUMethodsMap.LOG_INFO)) {
-			handleLogInfo(record);
-		}
-	}
 }
