@@ -1,4 +1,4 @@
-package de.tiramon.du.map;
+package de.tiramon.du;
 
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -12,15 +12,16 @@ import bell.oauth.discord.main.Response;
 import de.tiramon.du.map.model.Scanner;
 import de.tiramon.du.map.model.Scanner.ScannerState;
 import de.tiramon.du.map.model.Sound;
-import de.tiramon.du.map.service.Service;
-import de.tiramon.du.map.service.SoundService;
-import de.tiramon.du.map.utils.MethodEnumConverter;
+import de.tiramon.du.service.Service;
+import de.tiramon.du.sound.service.SoundService;
 import de.tiramon.du.tools.thread.ThreadInitializer;
+import de.tiramon.du.utils.MethodEnumConverter;
 import de.tiramon.github.update.service.UpdateService;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -45,7 +46,7 @@ import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 
-public class DuMapDialog extends Application {
+public class DuDialog extends Application {
 	protected Logger log = LoggerFactory.getLogger(getClass());
 
 	private OAuthBuilder builder = InstanceProvider.getOAuthBuilder();
@@ -55,10 +56,12 @@ public class DuMapDialog extends Application {
 
 	public static boolean init = false;
 
+	private SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy HH:mm:ss z");
+
 	@Override
 	public void start(Stage primaryStage) throws Exception {
 		String version = updateService.getSemanticVersion().toString();
-		primaryStage.setTitle("DuMap Companion - v" + version);
+		primaryStage.setTitle("DualUniverse Companion - v" + version);
 		InputStream in = getClass().getClassLoader().getResourceAsStream("favicon.png");
 		primaryStage.getIcons().add(new Image(in));
 
@@ -107,7 +110,6 @@ public class DuMapDialog extends Application {
 	private void loginDone(Stage primaryStage) {
 		ThreadInitializer.initThreads(service, new MethodEnumConverter(), InstanceProvider.getProperties());
 
-		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy HH:mm:ss z");
 		Label logfileLabel = new Label("No logfile found");
 		logfileLabel.setPrefWidth(600);
 		service.currentLogfileNameProperty().addListener((ObservableValue<? extends String> observable, String oldValue, String newValue) -> {
@@ -122,15 +124,17 @@ public class DuMapDialog extends Application {
 		VBox pane = new VBox(10);
 
 		HBox hbox = new HBox(10);
-		ChoiceBox<Sound> soundChoice = new ChoiceBox<>();
-		hbox.getChildren().add(soundChoice);
+		if (InstanceProvider.isFeatureActive(Feature.SCANNER)) {
+			ChoiceBox<Sound> soundChoice = new ChoiceBox<>();
+			hbox.getChildren().add(soundChoice);
 
-		soundChoice.setItems(service.getSoundOptions());
-		soundChoice.valueProperty().bindBidirectional(service.currentSoundProperty());
+			soundChoice.setItems(service.getSoundOptions());
+			soundChoice.valueProperty().bindBidirectional(service.currentSoundProperty());
 
-		Button playButton = new Button(">");
-		playButton.setOnAction(event -> service.playSound());
-		hbox.getChildren().add(playButton);
+			Button playButton = new Button(">");
+			playButton.setOnAction(event -> service.playSound());
+			hbox.getChildren().add(playButton);
+		}
 
 		hbox.getChildren().add(new Label("Last entry read:"));
 		Label lastEntryReadLabel = new Label();
@@ -158,32 +162,87 @@ public class DuMapDialog extends Application {
 		});
 		hbox.getChildren().add(workingGroup);
 
+		Label analyzedLines = new Label("0 Lines");
+		analyzedLines.textProperty().bind(Bindings.createStringBinding(() -> service.analyzedLinesProperty().get() + " lines", service.analyzedLinesProperty()));
+		hbox.getChildren().add(analyzedLines);
+
+		Label outstandingRequests = new Label("0 outstanding requests");
+		outstandingRequests.textProperty().bind(Bindings.createStringBinding(() -> service.getMarketService().outstandingRequestsProperty().get() + " outstanding requests", service.getMarketService().outstandingRequestsProperty()));
+		hbox.getChildren().add(outstandingRequests);
+
 		CheckBox alwaysOnTopCheckbox = new CheckBox("Always on top");
 		alwaysOnTopCheckbox.setSelected(primaryStage.isAlwaysOnTop());
 		alwaysOnTopCheckbox.selectedProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 			primaryStage.setAlwaysOnTop(newValue);
 		});
 
-		CheckBox soundFrameworkCheckbox = new CheckBox("SoundFramework");
-		soundFrameworkCheckbox.setSelected(soundService.isEnabled());
-		soundFrameworkCheckbox.selectedProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
-			soundService.setEnabled(newValue);
-		});
-
-		Slider volumeSlider = new Slider(0., 100., 100.);
-		volumeSlider.setMajorTickUnit(25.0);
-		volumeSlider.setMinorTickCount(100);
-		volumeSlider.setShowTickMarks(true);
-		volumeSlider.setShowTickLabels(true);
-		volumeSlider.valueProperty().addListener((ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
-			soundService.setBaseVolume(newValue.doubleValue() / 100.);
-		});
-		volumeSlider.setValue(Double.valueOf(InstanceProvider.getProperties().getProperty("sound.framework.volume", "100")));
 		VBox options = new VBox(10);
 		options.getChildren().add(alwaysOnTopCheckbox);
-		options.getChildren().add(soundFrameworkCheckbox);
-		options.getChildren().add(volumeSlider);
+
+		if (InstanceProvider.isFeatureActive(Feature.SOUND)) {
+			CheckBox soundFrameworkCheckbox = new CheckBox("SoundFramework");
+			soundFrameworkCheckbox.setSelected(soundService.isEnabled());
+			soundFrameworkCheckbox.selectedProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
+				soundService.setEnabled(newValue);
+			});
+
+			Slider volumeSlider = new Slider(0., 100., 100.);
+			volumeSlider.setMajorTickUnit(25.0);
+			volumeSlider.setMinorTickCount(100);
+			volumeSlider.setShowTickMarks(true);
+			volumeSlider.setShowTickLabels(true);
+			volumeSlider.valueProperty().addListener((ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
+				soundService.setBaseVolume(newValue.doubleValue() / 100.);
+			});
+			volumeSlider.setValue(Double.valueOf(InstanceProvider.getProperties().getProperty("sound.framework.volume", "100")));
+
+			options.getChildren().add(soundFrameworkCheckbox);
+			options.getChildren().add(volumeSlider);
+		}
 		hbox.getChildren().add(options);
+
+		boolean updateAvailable = updateService.isUpdateAvailable();
+		if (updateAvailable) {
+			addUpdate(pane.getChildren());
+		} else {
+			log.info("Version is already up to date");
+		}
+
+		pane.getChildren().add(logfileLabel);
+		pane.getChildren().add(backlogLabel);
+		pane.getChildren().add(hbox);
+		if (InstanceProvider.isFeatureActive(Feature.SCANNER)) {
+			TableView<Scanner> scannerList = createScannerList();
+			VBox.setVgrow(scannerList, Priority.ALWAYS);
+			pane.getChildren().add(scannerList);
+		}
+
+		Scene scene = new Scene(pane);
+		primaryStage.setScene(scene);
+		primaryStage.show();
+	}
+
+	private void addUpdate(ObservableList<javafx.scene.Node> observableList) {
+		HBox updateBox = new HBox(10);
+		updateBox.setAlignment(Pos.BASELINE_CENTER);
+		Hyperlink releaseLink = new Hyperlink();
+		releaseLink.setText("Release");
+		releaseLink.setOnAction((event) -> getHostServices().showDocument(updateService.getGithubReleaseInformation().getHtmlUrl()));
+		Hyperlink jarLink = new Hyperlink();
+		jarLink.setText("Jar");
+		jarLink.setOnAction((event) -> getHostServices().showDocument(updateService.getGithubReleaseInformation().getAssets()[0].getBrowserDownloadUrl()));
+		log.info("Update available");
+
+		Label updateAvailableLabel = new Label("Update available " + InstanceProvider.getUpdateService().getSemanticGithubVersion());
+		updateAvailableLabel.setStyle("-fx-font-weight: bold");
+		updateBox.getChildren().add(updateAvailableLabel);
+		updateBox.getChildren().add(releaseLink);
+		updateBox.getChildren().add(jarLink);
+
+		observableList.add(updateBox);
+	}
+
+	private TableView<Scanner> createScannerList() {
 		TableColumn<Scanner, Number> idColumn = new TableColumn<>("Scanner Id");
 		idColumn.setCellValueFactory(param -> param.getValue().idProperty());
 
@@ -274,38 +333,6 @@ public class DuMapDialog extends Application {
 			content.putString(entry.positionProperty().get());
 			clipboard.setContent(content);
 		});
-
-		boolean updateAvailable = updateService.isUpdateAvailable();
-		if (updateAvailable) {
-			HBox updateBox = new HBox(10);
-			updateBox.setAlignment(Pos.BASELINE_CENTER);
-			Hyperlink releaseLink = new Hyperlink();
-			releaseLink.setText("Release");
-			releaseLink.setOnAction((event) -> getHostServices().showDocument(updateService.getGithubReleaseInformation().getHtmlUrl()));
-			Hyperlink jarLink = new Hyperlink();
-			jarLink.setText("Jar");
-			jarLink.setOnAction((event) -> getHostServices().showDocument(updateService.getGithubReleaseInformation().getAssets()[0].getBrowserDownloadUrl()));
-			log.info("Update available");
-
-			Label updateAvailableLabel = new Label("Update available " + InstanceProvider.getUpdateService().getSemanticGithubVersion());
-			updateAvailableLabel.setStyle("-fx-font-weight: bold");
-			updateBox.getChildren().add(updateAvailableLabel);
-			updateBox.getChildren().add(releaseLink);
-			updateBox.getChildren().add(jarLink);
-
-			pane.getChildren().add(updateBox);
-		} else {
-			log.info("Version is already up to date");
-		}
-
-		pane.getChildren().add(logfileLabel);
-		pane.getChildren().add(backlogLabel);
-		pane.getChildren().add(hbox);
-		VBox.setVgrow(scannerList, Priority.ALWAYS);
-		pane.getChildren().add(scannerList);
-
-		Scene scene = new Scene(pane);
-		primaryStage.setScene(scene);
-		primaryStage.show();
+		return scannerList;
 	}
 }

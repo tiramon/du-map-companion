@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 
 import bell.oauth.discord.main.OAuthBuilder;
-import de.tiramon.du.map.InstanceProvider;
+import de.tiramon.du.InstanceProvider;
 import de.tiramon.du.map.model.AssetInformation;
 import de.tiramon.du.map.model.ClaimType;
 import de.tiramon.du.map.model.Ore;

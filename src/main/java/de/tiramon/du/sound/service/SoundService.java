@@ -1,4 +1,4 @@
-package de.tiramon.du.map.service;
+package de.tiramon.du.sound.service;
 
 import java.io.File;
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.tiramon.du.map.sound.SoundConfig;
+import de.tiramon.du.sound.SoundConfig;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;

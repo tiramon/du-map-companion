@@ -1,4 +1,4 @@
-package de.tiramon.du.map.sound;
+package de.tiramon.du.sound;
 
 import java.io.File;
 

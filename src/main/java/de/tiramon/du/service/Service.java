@@ -1,4 +1,4 @@
-package de.tiramon.du.map.service;
+package de.tiramon.du.service;
 
 import java.io.File;
 import java.net.URL;
@@ -18,8 +18,9 @@ import org.slf4j.LoggerFactory;
 
 import com.sun.javafx.collections.ObservableListWrapper;
 
-import de.tiramon.du.map.DuMapDialog;
-import de.tiramon.du.map.InstanceProvider;
+import de.tiramon.du.DuDialog;
+import de.tiramon.du.Feature;
+import de.tiramon.du.InstanceProvider;
 import de.tiramon.du.map.model.ClaimType;
 import de.tiramon.du.map.model.DUMethodDuMap;
 import de.tiramon.du.map.model.Ore;
@@ -27,9 +28,13 @@ import de.tiramon.du.map.model.Scan;
 import de.tiramon.du.map.model.Scanner;
 import de.tiramon.du.map.model.Scanner.ScannerState;
 import de.tiramon.du.map.model.Sound;
-import de.tiramon.du.map.model.User;
-import de.tiramon.du.map.sound.SoundCommand;
-import de.tiramon.du.map.sound.SoundConfig;
+import de.tiramon.du.map.service.DuMapService;
+import de.tiramon.du.market.client.ApiException;
+import de.tiramon.du.market.service.MarketService;
+import de.tiramon.du.model.User;
+import de.tiramon.du.sound.SoundCommand;
+import de.tiramon.du.sound.SoundConfig;
+import de.tiramon.du.sound.service.SoundService;
 import de.tiramon.du.tools.model.DuLogRecord;
 import de.tiramon.du.tools.service.IHandleService;
 import javafx.application.Platform;
@@ -54,6 +59,7 @@ public class Service implements IHandleService {
 	private String soundSetting = InstanceProvider.getProperties().getProperty("territoryscan.sound");
 
 	private DuMapService dumapService = new DuMapService();
+	private MarketService marketService = new MarketService();
 
 	private Pattern asset = Pattern.compile("onTerritoryClaimed\\(planet=(?<planetId>\\d+), tile=(?<tileId>\\d+)\\)");
 	private Pattern asset2 = Pattern.compile("Received rights for asset AssetId:\\[type = Territory, construct = ConstructId:\\[constructId = 0\\], element = ElementId:\\[elementId = 0\\], territory = TerritoryTileIndex:\\[planetId = (?<planetId>\\d+), tileIndex = (?<tileId>\\d+)\\], item = ItemId:\\[typeId = 0, instanceId = 0, ownerId = EntityId:\\[playerId = 0, organizationId = 0\\]\\], organization = OrganizationId:\\[organizationId = 0\\]\\]");
@@ -93,48 +99,63 @@ public class Service implements IHandleService {
 	private BooleanProperty isWorkingProperty = new SimpleBooleanProperty(false);
 	private LongProperty lastEntryReadProperty = new SimpleLongProperty(0);
 	private LongProperty backlogCountProperty = new SimpleLongProperty();
+	private LongProperty analyzedLinesProperty = new SimpleLongProperty(0);
 
 	public Service() {
 		initSound();
 	}
 
 	public void initSound() {
-		soundList.add(new Sound("None", null));
-		soundList.add(new Sound("Pling", "35631__reinsamba__crystal-glass.mp3"));
-		soundList.add(new Sound("Alien Voice", "territoryscancompleted_alienvoice.mp3"));
-		log.info("Territory Scanner analysis activated");
-		currentSoundProperty.set(soundList.get(1));
+		if (InstanceProvider.isFeatureActive(Feature.SCANNER)) {
+			soundList.add(new Sound("None", null));
+			soundList.add(new Sound("Pling", "35631__reinsamba__crystal-glass.mp3"));
+			soundList.add(new Sound("Alien Voice", "territoryscancompleted_alienvoice.mp3"));
+			log.info("Territory Scanner analysis activated");
+			currentSoundProperty.set(soundList.get(1));
 
-		if (soundSetting != null && !soundSetting.isBlank()) {
-			Sound sound = soundList.stream().filter(s -> s.getTitle().equalsIgnoreCase(soundSetting)).findFirst().orElse(null);
-			if (sound != null) {
-				currentSoundProperty.set(sound);
+			if (soundSetting != null && !soundSetting.isBlank()) {
+				Sound sound = soundList.stream().filter(s -> s.getTitle().equalsIgnoreCase(soundSetting)).findFirst().orElse(null);
+				if (sound != null) {
+					currentSoundProperty.set(sound);
+				}
 			}
 		}
 	}
 
 	@Override
 	public void handle(DuLogRecord record) {
-		if (record.method.equals(DUMethodDuMap.ASSET_CLAIM)) {
-			handleAsset(record);
-		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSCHANGE)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSSTART)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESULT)) {
-			handleScanOre(record);
-		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_POSITION)) {
-			handleScanPosition(record);
-		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESET)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_SAVED)) {
-			handleScanStatusChange(record);
-		} else if (record.method.equals(DUMethodDuMap.ASSET_RIGHTS)) {
-			handleAssetRights(record);
-		} else if (record.method.equals(DUMethodDuMap.ASSET_RELEASED)) {
-			handleAssetReleased(record);
-		} else if (record.method.equals(DUMethodDuMap.LOG_INFO)) {
-			handleLogInfo(record);
+		try {
+			if (InstanceProvider.isFeatureActive(Feature.ASSET) && record.method.equals(DUMethodDuMap.ASSET_CLAIM)) {
+				handleAsset(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSCHANGE)) {
+				handleScanStatusChange(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSSTART)) {
+				handleScanStatusChange(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESULT)) {
+				handleScanOre(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_POSITION)) {
+				handleScanPosition(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESET)) {
+				handleScanStatusChange(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_SAVED)) {
+				handleScanStatusChange(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.ASSET) && record.method.equals(DUMethodDuMap.ASSET_RIGHTS)) {
+				handleAssetRights(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.ASSET) && record.method.equals(DUMethodDuMap.ASSET_RELEASED)) {
+				handleAssetReleased(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.MARKET) && record.method.equals(DUMethodDuMap.MARKET_LIST)) {
+				marketService.handleMarketList(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.MARKET) && record.method.equals(DUMethodDuMap.MARKET_ITEM_ORDERS)) {
+				marketService.handleMarketItemOrders(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.MARKET) && record.method.equals(DUMethodDuMap.MARKET_ORDER_CANCELED)) {
+				marketService.handleMarketOrderCanceled(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.MARKET) && record.method.equals(DUMethodDuMap.MARKET_PERSONAL)) {
+				marketService.handleMarketPersonal(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.MARKET) && record.method.equals(DUMethodDuMap.MARKET_SLOT)) {
+				marketService.handleMarketSlot(record);
+			}
+		} catch (ApiException e) {
+			log.error("ApiException", e);
 		}
 	}
 
@@ -262,7 +283,7 @@ public class Service implements IHandleService {
 	}
 
 	public void playSound() {
-		if (!DuMapDialog.init) {
+		if (!DuDialog.init) {
 			return;
 		}
 		String strFilename = currentSoundProperty.get().getResourceFileName();
@@ -306,7 +327,7 @@ public class Service implements IHandleService {
 	public void handleLogInfo(DuLogRecord record) {
 		Matcher matcher = soundCommand.matcher(record.message);
 		if (matcher.find()) {
-			if (!DuMapDialog.init) {
+			if (!DuDialog.init) {
 				return;
 			}
 			SoundCommand command = SoundCommand.valueOf(matcher.group("command").split("_")[1].toUpperCase());
@@ -377,7 +398,7 @@ public class Service implements IHandleService {
 
 	@Override
 	public void setInitialized(final boolean b) {
-		DuMapDialog.init = true;
+		DuDialog.init = true;
 		Platform.runLater(() -> isInitializedProperty.set(b));
 	}
 
@@ -416,4 +437,21 @@ public class Service implements IHandleService {
 		return backlogCountProperty;
 	}
 
+	public LongProperty analyzedLinesProperty() {
+		return analyzedLinesProperty;
+	}
+
+	@Override
+	public void setAnalyzedLines(long lines) {
+		analyzedLinesProperty.set(lines);
+	}
+
+	@Override
+	public void incrementAnalyzedLines() {
+		Platform.runLater(() -> analyzedLinesProperty.set(analyzedLinesProperty.get() + 1));
+	}
+
+	public MarketService getMarketService() {
+		return marketService;
+	}
 }

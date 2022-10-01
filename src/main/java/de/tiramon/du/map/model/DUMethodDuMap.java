@@ -13,7 +13,14 @@ public enum DUMethodDuMap implements DUMethod {
 	ASSET_CLAIM("NQ::Game::TerritoryManager::onTerritoryClaimed"),
 	ASSET_RIGHTS("NQ::RDMS::RightsCache<class NQ::Game::Territory>::requestRights::<lambda>::operator ()"),
 	ASSET_RELEASED("NQ::Game::TerritoryManager::onTerritoryReleased"),
-	LOG_INFO("NQ::DP::System::logInfo");
+	LOG_INFO("NQ::DP::System::logInfo"),
+
+	MARKET_SLOT("NQ::UI::MarketsPanel::onUpdateMarketContainerContent"),
+	MARKET_LIST("NQ::Game::MarketManager::onMarketList"),
+	MARKET_PERSONAL("NQ::UI::MarketsPanel::onUpdateMarketMyOrders"),
+	MARKET_ITEM_ORDERS("NQ::UI::MarketOrdersPart::onUpdateMarketItemOrders"),
+	MARKET_ORDER_CANCELED("NQ::UI::MarketsPanel::onOrderCanceled")
+	;
 	//@formatter:on
 
 	private DUMethodDuMap(String dumethod) {

@@ -1,4 +1,4 @@
-package de.tiramon.du.map.model;
+package de.tiramon.du.model;
 
 public class User {
 	private Long playerId;

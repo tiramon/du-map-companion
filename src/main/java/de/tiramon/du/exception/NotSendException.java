@@ -1,4 +1,4 @@
-package de.tiramon.du.map.exception;
+package de.tiramon.du.exception;
 
 public class NotSendException extends Exception {
 

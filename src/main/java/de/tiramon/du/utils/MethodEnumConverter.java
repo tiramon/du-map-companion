@@ -1,4 +1,4 @@
-package de.tiramon.du.map.utils;
+package de.tiramon.du.utils;
 
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;

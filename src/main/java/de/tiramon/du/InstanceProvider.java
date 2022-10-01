@@ -1,4 +1,4 @@
-package de.tiramon.du.map;
+package de.tiramon.du;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,8 +15,8 @@ import com.google.gson.Gson;
 
 import bell.oauth.discord.domain.User;
 import bell.oauth.discord.main.OAuthBuilder;
-import de.tiramon.du.map.service.Service;
-import de.tiramon.du.map.service.SoundService;
+import de.tiramon.du.service.Service;
+import de.tiramon.du.sound.service.SoundService;
 import de.tiramon.github.update.service.UpdateService;
 
 public class InstanceProvider {
@@ -31,14 +31,18 @@ public class InstanceProvider {
 
 	static void init() {
 		properties = initProperties();
+		for (Feature feature : Feature.values()) {
+			log.info("Feature {} is {}", feature.toString(), isFeatureActive(feature) ? "active" : "inactive");
+		}
 		updateService = new UpdateService("https://api.github.com/repos/tiramon/du-map-companion/releases/latest");
 		oauthbuilder = oauthBuilder();
-		soundService = new SoundService(Boolean.valueOf(properties.getProperty("sound.framework.enabled", "false")));
+		if (isFeatureActive(Feature.SOUND)) {
+			soundService = new SoundService(Boolean.valueOf(properties.getProperty("sound.framework.enabled", "false")));
+		}
 		service = new Service();
 	}
 
 	private static Properties initProperties() {
-
 		Properties properties = new Properties();
 		File file = new File("application.properties");
 		if (file.exists() && file.canRead()) {
@@ -53,6 +57,12 @@ public class InstanceProvider {
 		}
 
 		return properties;
+	}
+
+	public static boolean isFeatureActive(Feature feature) {
+		String propertiesValue = (String) properties.getOrDefault("feature." + feature.toString() + ".active", "true");
+		return Boolean.valueOf(propertiesValue);
+
 	}
 
 	private static OAuthBuilder oauthBuilder() {
