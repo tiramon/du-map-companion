@@ -2,13 +2,13 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.tiramon.du</groupId>
 	<artifactId>du-map-companion</artifactId>
-	<version>3.0.1</version>
+	<version>3.0.2</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<checkstyle.config.location>google_checks.xml</checkstyle.config.location>
-		<start-class>de.tiramon.du.map.DuMapCompanion</start-class>
+		<start-class>de.tiramon.du.DuCompanion</start-class>
 		<fx.version>17-ea+7</fx.version>
 
 		<java.version>11</java.version>
