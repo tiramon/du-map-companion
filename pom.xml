@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.tiramon.du</groupId>
 	<artifactId>du-map-companion</artifactId>
-	<version>3.0.3</version>
+	<version>3.1.0</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,7 +25,7 @@
 		<dependency>
 			<groupId>de.tiramon.du.tools</groupId>
 			<artifactId>du-log-tools</artifactId>
-			<version>1.0.1</version>
+			<version>1.1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.openjfx</groupId>
