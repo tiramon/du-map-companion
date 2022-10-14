@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.lang3.StringUtils;
@@ -28,6 +30,14 @@ public class InstanceProvider {
 	private static Service service = null;
 	private static SoundService soundService = null;
 	private static UpdateService updateService = null;
+	private static Map<Feature, String> defaultFeatureState = new HashMap<>();
+
+	static {
+		defaultFeatureState.put(Feature.MARKET, "false");
+		defaultFeatureState.put(Feature.SOUND, "false");
+		defaultFeatureState.put(Feature.ASSET, "true");
+		defaultFeatureState.put(Feature.SCANNER, "true");
+	}
 
 	static void init() {
 		properties = initProperties();
@@ -60,7 +70,7 @@ public class InstanceProvider {
 	}
 
 	public static boolean isFeatureActive(Feature feature) {
-		String propertiesValue = (String) properties.getOrDefault("feature." + feature.toString() + ".active", "true");
+		String propertiesValue = (String) properties.getOrDefault("feature." + feature.toString() + ".active", defaultFeatureState.get(feature));
 		return Boolean.valueOf(propertiesValue);
 
 	}
