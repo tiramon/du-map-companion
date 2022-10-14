@@ -36,7 +36,7 @@ public class InstanceProvider {
 		}
 		updateService = new UpdateService("https://api.github.com/repos/tiramon/du-map-companion/releases/latest");
 		oauthbuilder = oauthBuilder();
-		if (isFeatureActive(Feature.SOUND)) {
+		if (isFeatureActive(Feature.SOUND) || isFeatureActive(Feature.SCANNER)) {
 			soundService = new SoundService(Boolean.valueOf(properties.getProperty("sound.framework.enabled", "false")));
 		}
 		service = new Service();
