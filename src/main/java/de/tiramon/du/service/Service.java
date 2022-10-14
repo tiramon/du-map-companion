@@ -72,6 +72,7 @@ public class Service implements IHandleService {
 	private Pattern scanner_reset = Pattern.compile("Coroutine \\d+\\(TerritoryScan_(?<constructid>\\d+)#(?<scannerid>\\d+)\\) killed");
 	private Pattern scanOrePattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: material: (?<oreName>[A-Za-z ]+) : (?<oreAmount>[\\de+\\.]+) \\* \\d+");
 	private Pattern scanSavedPattern = Pattern.compile("TerritoryScan\\[(?<scannerid>\\d+)\\]: results saved \\[item:\\d+\\|\\d+\\]");
+	private Pattern scanStatusChange = Pattern.compile("TerritoryScannerUnit\\[(?<constructid>\\d+)#(?<scannerid>\\d+)\\] Changed status: (?<status>\\d+)");
 	/*
 	 * sound_play|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Plays a concurrent sound sound_notification|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Lowers volume on all other sounds for its duration, and plays overtop sound_q|path_to/the.mp3(string)|ID(string)|Optional Volume(int 0-100) -- Plays a sound after all other queued sounds finish
 	 *
@@ -128,16 +129,18 @@ public class Service implements IHandleService {
 			if (InstanceProvider.isFeatureActive(Feature.ASSET) && record.method.equals(DUMethodDuMap.ASSET_CLAIM)) {
 				handleAsset(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSCHANGE)) {
-				handleScanStatusChange(record);
+				handleScanStatusChange2(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATUSSTART)) {
-				handleScanStatusChange(record);
+				handleScanStatusChange2(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESULT)) {
 				handleScanOre(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_POSITION)) {
 				handleScanPosition(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESET)) {
-				handleScanStatusChange(record);
+				handleScanStatusChange2(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_SAVED)) {
+				handleScanStatusChange2(record);
+			} else if (InstanceProvider.isFeatureActive(Feature.SCANNER) && record.method.equals(DUMethodDuMap.TERRITORYSCANNER_STATECHANGE)) {
 				handleScanStatusChange(record);
 			} else if (InstanceProvider.isFeatureActive(Feature.ASSET) && record.method.equals(DUMethodDuMap.ASSET_RIGHTS)) {
 				handleAssetRights(record);
@@ -173,6 +176,26 @@ public class Service implements IHandleService {
 	}
 
 	public void handleScanStatusChange(DuLogRecord record) {
+		Matcher matcher = scanStatusChange.matcher(record.message);
+		if (matcher.matches()) {
+			long scannerid = Long.valueOf(matcher.group("scannerid"));
+			int state = Integer.valueOf(matcher.group("status"));
+			addScannerIfNeeded(scannerid);
+			ScannerState scannerState = null;
+			if (state == 0)
+				scannerState = ScannerState.SAVED;
+			else if (state == 1)
+				scannerState = ScannerState.STARTED;
+			else if (state == 2)
+				scannerState = ScannerState.FINISHED;
+			else if (state == 3)
+				scannerState = ScannerState.RESETED;
+			scannerMap.get(scannerid).setState(scannerState, record.millis);
+			log.info("Scanner " + scannerid + " reseted");
+		}
+	}
+
+	public void handleScanStatusChange2(DuLogRecord record) {
 		if (record.method.equals(DUMethodDuMap.TERRITORYSCANNER_RESET)) {
 			Matcher matcher = scanner_reset.matcher(record.message);
 			if (matcher.matches()) {

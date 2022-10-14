@@ -10,6 +10,7 @@ public enum DUMethodDuMap implements DUMethod {
 	TERRITORYSCANNER_RESULT("NQ::Game::TerritoryScan::getResults"),
 	TERRITORYSCANNER_RESET("NQ::Coroutine::Handle::kill"),
 	TERRITORYSCANNER_SAVED("NQ::Game::TerritoryScannerManager::Impl::PendingTerritoryData::onItemCreated"),
+	TERRITORYSCANNER_STATECHANGE("NQ::Game::TerritoryScannerUnit::{ctor}::<lambda>::operator ()"),
 	ASSET_CLAIM("NQ::Game::TerritoryManager::onTerritoryClaimed"),
 	ASSET_RIGHTS("NQ::RDMS::RightsCache<class NQ::Game::Territory>::requestRights::<lambda>::operator ()"),
 	ASSET_RELEASED("NQ::Game::TerritoryManager::onTerritoryReleased"),
