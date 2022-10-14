@@ -61,7 +61,7 @@ public class Scanner {
 						timer.cancel();
 				}
 			}, 1000, 1000);
-		} else {
+		} else if (timer != null) {
 			timer.cancel();
 		}
 		/*
