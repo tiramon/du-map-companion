@@ -2,6 +2,7 @@ package de.tiramon.du;
 
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Date;
 
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -33,6 +35,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableColumn.SortType;
 import javafx.scene.control.TableView;
 import javafx.scene.image.Image;
 import javafx.scene.input.Clipboard;
@@ -312,6 +315,7 @@ public class DuDialog extends Application {
 
 		});
 		lastStateChangeColumn.setPrefWidth(140);
+		lastStateChangeColumn.setSortType(SortType.DESCENDING);
 
 		TableView<Scanner> scannerList = new TableView<>();
 
@@ -321,7 +325,15 @@ public class DuDialog extends Application {
 		scannerList.getColumns().add(timeLeftColumn);
 		scannerList.getColumns().add(lastStateChangeColumn);
 
-		scannerList.setItems(service.getScannerList());
+		Comparator<Scanner> scannerCompare = (Scanner scanner1, Scanner scanner2) -> {
+			return (int) (scanner1.lastStateChangeProperty().get() - scanner2.lastStateChangeProperty().get());
+		};
+		SortedList sortedList = new SortedList<>(service.getScannerList(), scannerCompare);
+		sortedList.comparatorProperty().bind(scannerList.comparatorProperty());
+
+		scannerList.getSortOrder().add(lastStateChangeColumn);
+
+		scannerList.setItems(sortedList);
 
 		scannerList.setOnMouseClicked(event -> {
 			Scanner entry = scannerList.getSelectionModel().getSelectedItem();

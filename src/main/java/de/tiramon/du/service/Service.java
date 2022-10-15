@@ -186,9 +186,10 @@ public class Service implements IHandleService {
 				scannerState = ScannerState.SAVED;
 			else if (state == 1)
 				scannerState = ScannerState.STARTED;
-			else if (state == 2)
+			else if (state == 2) {
 				scannerState = ScannerState.FINISHED;
-			else if (state == 3)
+				playSound();
+			} else if (state == 3)
 				scannerState = ScannerState.RESETED;
 			scannerMap.get(scannerid).setState(scannerState, record.millis);
 			log.info("Scanner " + scannerid + " reseted");
